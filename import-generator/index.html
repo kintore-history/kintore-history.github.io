@@ -44,43 +44,45 @@
   </div>
 
   <script>
-    const spreadsheet = jspreadsheet(document.getElementById('spreadsheet'), {
-      data: [
-        ["2025-06-01", "ベンチプレス", 60, 8, 3, "初回"]
-      ],
-      columns: [
-        { type: 'calendar', title: '日付', width: 120, options: { format: 'YYYY-MM-DD' } },
-        { type: 'text', title: '種目名', width: 150 },
-        { type: 'numeric', title: '重量(kg)', width: 100 },
-        { type: 'numeric', title: '回数', width: 80 },
-        { type: 'numeric', title: 'セット数', width: 80 },
-        { type: 'text', title: 'メモ', width: 180 },
-      ],
-      minDimensions: [6, 5],
-      allowInsertColumn: false,
-      allowManualInsertColumn: false,
-      allowManualInsertRow: true,
-      allowDeleteRow: true,
-      contextMenu: false
-    });
+    window.onload = function() {
+      const spreadsheet = jspreadsheet(document.getElementById('spreadsheet'), {
+        data: [
+          ["2025-06-01", "ベンチプレス", 60, 8, 3, "初回"]
+        ],
+        columns: [
+          { type: 'calendar', title: '日付', width: 120, options: { format: 'YYYY-MM-DD' } },
+          { type: 'text', title: '種目名', width: 150 },
+          { type: 'numeric', title: '重量(kg)', width: 100 },
+          { type: 'numeric', title: '回数', width: 80 },
+          { type: 'numeric', title: 'セット数', width: 80 },
+          { type: 'text', title: 'メモ', width: 180 },
+        ],
+        minDimensions: [6, 5],
+        allowInsertColumn: false,
+        allowManualInsertColumn: false,
+        allowManualInsertRow: true,
+        allowDeleteRow: true,
+        contextMenu: false
+      });
 
-    function exportJSON() {
-      const data = spreadsheet.getData();
-      const records = data.map(row => ({
-        date: row[0],
-        name: row[1],
-        weight: parseFloat(row[2]) || 0,
-        reps: parseInt(row[3]) || 0,
-        sets: parseInt(row[4]) || 0,
-        note: row[5] || ""
-      }));
+      window.exportJSON = function() {
+        const data = spreadsheet.getData();
+        const records = data.map(row => ({
+          date: row[0],
+          name: row[1],
+          weight: parseFloat(row[2]) || 0,
+          reps: parseInt(row[3]) || 0,
+          sets: parseInt(row[4]) || 0,
+          note: row[5] || ""
+        }));
 
-      const blob = new Blob([JSON.stringify({ records }, null, 2)], { type: "application/json" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = "training-log.json";
-      link.click();
-    }
+        const blob = new Blob([JSON.stringify({ records }, null, 2)], { type: "application/json" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "training-log.json";
+        link.click();
+      };
+    };
   </script>
 </body>
 </html>
