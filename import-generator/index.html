@@ -4,7 +4,12 @@
   <meta charset="UTF-8">
   <title>筋トレログ JSON生成ツール（JSpreadsheet版）</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jspreadsheet-ce@4.10.3/dist/jspreadsheet.css" />
+
+  <!-- 1. jsuites のCSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsuites@4/dist/jsuites.min.css" />
+
+  <!-- 2. jspreadsheet-ce のCSS（存在するバージョンを指定） -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jspreadsheet-ce@4.10.2/dist/jspreadsheet.min.css" />
 </head>
 <body>
   <h1>筋トレデータ入力（JSpreadsheet版）</h1>
@@ -16,8 +21,14 @@
     <button onclick="exportJSON()">JSONを生成してダウンロード</button>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/jspreadsheet-ce@4.10.3/dist/jspreadsheet.js"></script>
+  <!-- 3. jsuites のJS -->
+  <script src="https://cdn.jsdelivr.net/npm/jsuites@4/dist/jsuites.min.js"></script>
+
+  <!-- 4. jspreadsheet-ce のJS（存在するバージョンを指定） -->
+  <script src="https://cdn.jsdelivr.net/npm/jspreadsheet-ce@4.10.2/dist/index.min.js"></script>
+
   <script>
+    // JSpreadsheet の初期化
     const spreadsheet = jspreadsheet(document.getElementById('spreadsheet'), {
       data: [
         ["2025-06-01", "ベンチプレス", 60, 8, 3, "初回"]
@@ -38,6 +49,7 @@
       contextMenu: false
     });
 
+    // JSON出力＆ダウンロード関数
     function exportJSON() {
       const data = spreadsheet.getData();
       const records = data.map(row => ({
