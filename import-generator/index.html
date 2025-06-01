@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <title>筋トレログ JSON生成ツール（JSpreadsheet版）</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jspreadsheet-ce@4.11.1/dist/jspreadsheet.css" />
-  <script src="https://cdn.jsdelivr.net/npm/jspreadsheet-ce@4.11.1/dist/jspreadsheet.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jspreadsheet-ce@4.10.3/dist/jspreadsheet.css" />
+  <script src="https://cdn.jsdelivr.net/npm/jspreadsheet-ce@4.10.3/dist/jspreadsheet.js"></script>
   <style>
     body {
       font-family: sans-serif;
@@ -56,12 +56,11 @@
         { type: 'numeric', title: 'セット数', width: 80 },
         { type: 'text', title: 'メモ', width: 180 },
       ],
-      minDimensions: [6, 5], // 最小：6列・5行
+      minDimensions: [6, 5],
       allowInsertColumn: false,
       allowManualInsertColumn: false,
       allowManualInsertRow: true,
       allowDeleteRow: true,
-      csvFileName: 'training-log',
       contextMenu: false
     });
 
