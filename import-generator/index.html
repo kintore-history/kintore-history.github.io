@@ -5,84 +5,56 @@
   <title>筋トレログ JSON生成ツール（JSpreadsheet版）</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jspreadsheet-ce@4.10.3/dist/jspreadsheet.css" />
-  <script src="https://cdn.jsdelivr.net/npm/jspreadsheet-ce@4.10.3/dist/jspreadsheet.js"></script>
-  <style>
-    body {
-      font-family: sans-serif;
-      margin: 2em;
-      background: #fafafa;
-      color: #333;
-    }
-    h1 {
-      font-size: 1.5em;
-      margin-bottom: 0.5em;
-    }
-    .button-container {
-      margin-top: 1em;
-    }
-    button {
-      padding: 0.5em 1.2em;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      font-size: 1em;
-    }
-    button:hover {
-      background-color: #45a049;
-    }
-  </style>
 </head>
 <body>
   <h1>筋トレデータ入力（JSpreadsheet版）</h1>
   <p>カレンダー選択、セル・行のコピー＆ペーストが可能です。</p>
 
   <div id="spreadsheet"></div>
-  <div class="button-container">
+
+  <div style="margin-top: 1em;">
     <button onclick="exportJSON()">JSONを生成してダウンロード</button>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/jspreadsheet-ce@4.10.3/dist/jspreadsheet.js"></script>
   <script>
-    window.onload = function() {
-      const spreadsheet = jspreadsheet(document.getElementById('spreadsheet'), {
-        data: [
-          ["2025-06-01", "ベンチプレス", 60, 8, 3, "初回"]
-        ],
-        columns: [
-          { type: 'calendar', title: '日付', width: 120, options: { format: 'YYYY-MM-DD' } },
-          { type: 'text', title: '種目名', width: 150 },
-          { type: 'numeric', title: '重量(kg)', width: 100 },
-          { type: 'numeric', title: '回数', width: 80 },
-          { type: 'numeric', title: 'セット数', width: 80 },
-          { type: 'text', title: 'メモ', width: 180 },
-        ],
-        minDimensions: [6, 5],
-        allowInsertColumn: false,
-        allowManualInsertColumn: false,
-        allowManualInsertRow: true,
-        allowDeleteRow: true,
-        contextMenu: false
-      });
+    const spreadsheet = jspreadsheet(document.getElementById('spreadsheet'), {
+      data: [
+        ["2025-06-01", "ベンチプレス", 60, 8, 3, "初回"]
+      ],
+      columns: [
+        { type: 'calendar', title: '日付', width: 120, options: { format: 'YYYY-MM-DD' } },
+        { type: 'text', title: '種目名', width: 150 },
+        { type: 'numeric', title: '重量(kg)', width: 100 },
+        { type: 'numeric', title: '回数', width: 80 },
+        { type: 'numeric', title: 'セット数', width: 80 },
+        { type: 'text', title: 'メモ', width: 180 },
+      ],
+      minDimensions: [6, 5],
+      allowInsertColumn: false,
+      allowManualInsertColumn: false,
+      allowManualInsertRow: true,
+      allowDeleteRow: true,
+      contextMenu: false
+    });
 
-      window.exportJSON = function() {
-        const data = spreadsheet.getData();
-        const records = data.map(row => ({
-          date: row[0],
-          name: row[1],
-          weight: parseFloat(row[2]) || 0,
-          reps: parseInt(row[3]) || 0,
-          sets: parseInt(row[4]) || 0,
-          note: row[5] || ""
-        }));
+    function exportJSON() {
+      const data = spreadsheet.getData();
+      const records = data.map(row => ({
+        date: row[0],
+        name: row[1],
+        weight: parseFloat(row[2]) || 0,
+        reps: parseInt(row[3]) || 0,
+        sets: parseInt(row[4]) || 0,
+        note: row[5] || ""
+      }));
 
-        const blob = new Blob([JSON.stringify({ records }, null, 2)], { type: "application/json" });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = "training-log.json";
-        link.click();
-      };
-    };
+      const blob = new Blob([JSON.stringify({ records }, null, 2)], { type: "application/json" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "training-log.json";
+      link.click();
+    }
   </script>
 </body>
 </html>
