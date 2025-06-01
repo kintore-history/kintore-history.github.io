@@ -2,10 +2,11 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>部位連動＋自由入力ドロップダウン（JSpreadsheet v3）</title>
+  <title>部位連動＋自由入力ドロップダウン（JSpreadsheet v3 安定版）</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!-- jsuites（v3）とJSpreadsheet v3 のCSS -->
+  <!-- jsuites（v3） の CSS (任意) -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsuites@3/dist/jsuites.min.css" />
+  <!-- JSpreadsheet v3 (旧 jExcel v3) の CSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jspreadsheet@3.21.0/dist/jexcel.css" />
   <style>
     body { font-family: sans-serif; padding: 1em; }
@@ -20,91 +21,56 @@
   <div id="spreadsheet"></div>
   <button onclick="exportJSON()">アプリ形式でJSON生成＆ダウンロード</button>
 
-  <!-- jsuites（v3）とJSpreadsheet v3 のJS -->
-  <script src="https://cdn.jsdelivr.net/npm/jsuites@3/dist/jsuites.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspreadsheet@3.21.0/dist/jexcel.js"></script>
+  <!-- jsuites（v3） と JSpreadsheet v3 の JS を読み込む順序に注意する -->
+  <script src="https://cdn.jsdelivr.net/npm/jsuites@3/dist/jsuites.min.js"></script> <!-- jsuites v3 (任意)  [oai_citation:0‡Jspreadsheet CE](https://bossanova.uk/jspreadsheet/v3/getting-started?utm_source=chatgpt.com) -->
+  <script src="https://cdn.jsdelivr.net/npm/jspreadsheet@3.21.0/dist/jexcel.js"></script> <!-- jExcel v3 (JSpreadsheet v3)  [oai_citation:1‡GitHub](https://github.com/jspreadsheet/ce?utm_source=chatgpt.com) -->
 
   <script>
     // ───────────────
     // 1) 既存の「部位」と「種目」一覧
     // ───────────────
-    const bodyPartOptions = ["胸", "背中", "肩", "腕", "腹", "脚"];
-    const exercisesByPart = {
+    const bodyPartOptions = ["胸", "背中", "肩", "腕", "腹", "脚"];                           //  [oai_citation:2‡Jspreadsheet CE](https://bossanova.uk/jspreadsheet/v3/getting-started?utm_source=chatgpt.com) [oai_citation:3‡npm](https://www.npmjs.com/package/jexcel/v/3.5.0?utm_source=chatgpt.com)
+    const exercisesByPart = {                                                                 //  [oai_citation:4‡Jspreadsheet CE](https://bossanova.uk/jspreadsheet/v3/getting-started?utm_source=chatgpt.com) [oai_citation:5‡npm](https://www.npmjs.com/package/jexcel/v/3.5.0?utm_source=chatgpt.com)
       "胸": [
-        "ベンチプレス",
-        "インクラインベンチプレス",
-        "ダンベルプレス",
-        "インクラインダンベルプレス",
-        "ディップス",
-        "チェストプレス",
-        "ダンベルフライ",
-        "インクラインダンベルフライ",
-        "ペクトラルフライ",
-        "インクラインプレス",
-        "ケーブルクロスオーバー",
-        "ケーブルフライ"
+        "ベンチプレス", "インクラインベンチプレス", "ダンベルプレス", "インクラインダンベルプレス",
+        "ディップス", "チェストプレス", "ダンベルフライ", "インクラインダンベルフライ",
+        "ペクトラルフライ", "インクラインプレス", "ケーブルクロスオーバー", "ケーブルフライ"
       ],
       "背中": [
-        "ラットプルダウン",
-        "チンニング（懸垂）",
-        "デッドリフト",
-        "シーテッドロー",
-        "ベントオーバーロー",
-        "ケーブルプルオーバー",
-        "ワンハンドローイング",
-        "シーテッドロウ"
+        "ラットプルダウン", "チンニング（懸垂）", "デッドリフト", "シーテッドロー",
+        "ベントオーバーロー", "ケーブルプルオーバー", "ワンハンドローイング", "シーテッドロウ"
       ],
       "肩": [
-        "サイドレイズ",
-        "ショルダープレス",
-        "ダンベルショルダープレス",
-        "リアレイズ",
-        "ミリタリープレス",
-        "アーノルドプレス",
-        "リアデルト",
-        "フロントレイズ",
-        "ケーブルサイドレイズ",
-        "インクラインサイドレイズ"
+        "サイドレイズ", "ショルダープレス", "ダンベルショルダープレス", "リアレイズ",
+        "ミリタリープレス", "アーノルドプレス", "リアデルト", "フロントレイズ",
+        "ケーブルサイドレイズ", "インクラインサイドレイズ"
       ],
       "腕": [
-        "アームカール",
-        "インクラインアームカール",
-        "ハンマーカール",
-        "バーベルカール",
-        "ダンベルカール",
-        "フレンチプレス",
-        "ケーブルプレスダウン",
-        "ケーブルカール",
-        "スカルクラッシャー",
-        "EZバーカール",
-        "インクラインハンマーカール"
+        "アームカール", "インクラインアームカール", "ハンマーカール", "バーベルカール",
+        "ダンベルカール", "フレンチプレス", "ケーブルプレスダウン", "ケーブルカール",
+        "スカルクラッシャー", "EZバーカール", "インクラインハンマーカール"
       ],
       "腹": [
-        "アブドミナル",
-        "アブローラー"
+        "アブドミナル", "アブローラー"
       ],
       "脚": [
-        "スクワット",
-        "レッグプレス",
-        "レッグエクステンション",
-        "レッグカール",
-        "ブルガリアンスクワット",
-        "カーフレイズ"
+        "スクワット", "レッグプレス", "レッグエクステンション", "レッグカール",
+        "ブルガリアンスクワット", "カーフレイズ"
       ]
     };
-    // 部位未選択時に全種目を候補にするため、フラット化
-    const allExercises = Object.values(exercisesByPart).flat();
+    // 部位未選択時に全種目を候補にするため、配列をフラット化しておく
+    const allExercises = Object.values(exercisesByPart).flat();                            //  [oai_citation:6‡Jspreadsheet CE](https://bossanova.uk/jspreadsheet/v3/getting-started?utm_source=chatgpt.com)
 
     // ───────────────
-    // 2) JSpreadsheet v3 を初期化
-    //    ・editOnClick: true でシングルクリックでセル編集開始
-    //    ・列2 (種目名) は source: allExercises で初期候補を設定
-    //    ・onchange で部位変更時に該当行の「種目名」source を書き換える
+    // 2) JSpreadsheet v3 (jExcel) を初期化
+    //    ・editOnClick: true    → シングルクリックでセル編集開始 (ダブルクリック不要)
+    //    ・columns[2].source     → 初期は全種目一覧
+    //    ・onchange イベント     → 「部位」列変更時に該当行の「種目名」候補を差し替え
     // ───────────────
-    const spreadsheet = jspreadsheet(document.getElementById('spreadsheet'), {
-      editOnClick: true,
+    const spreadsheet = jexcel(document.getElementById('spreadsheet'), {                       //  [oai_citation:7‡Jspreadsheet CE](https://bossanova.uk/jspreadsheet/v3/getting-started?utm_source=chatgpt.com) [oai_citation:8‡GitHub](https://github.com/jspreadsheet/ce?utm_source=chatgpt.com)
+      editOnClick: true,  // シングルクリックでセルが編集モードに入る                               [oai_citation:9‡npm](https://www.npmjs.com/package/jexcel/v/3.5.0?utm_source=chatgpt.com)
       data: [
-        // 初期行：日付, 部位, 種目, 重量, 回数, メモ
+        // 初期行：日付, 部位, 種目, 重量, 回数, メモ の順番
         ["", "", "", 0, 0, ""]
       ],
       columns: [
@@ -118,17 +84,17 @@
           type: 'dropdown',
           title: '部位',
           width: 100,
-          source: bodyPartOptions,
-          autocomplete: true,
-          allowCustom: false
+          source: bodyPartOptions,   // 部位リストを指定                                              [oai_citation:10‡Jspreadsheet CE](https://bossanova.uk/jspreadsheet/v3/getting-started?utm_source=chatgpt.com) [oai_citation:11‡npm](https://www.npmjs.com/package/jexcel/v/3.5.0?utm_source=chatgpt.com)
+          autocomplete: true,        // キーボード入力で候補を絞り込み                                [oai_citation:12‡npm](https://www.npmjs.com/package/jexcel/v/3.5.0?utm_source=chatgpt.com)
+          allowCustom: false         // 部位はリスト内のみ選択可
         },
         {
           type: 'dropdown',
           title: '種目名',
           width: 200,
-          source: allExercises.slice(), // 初期は全種目
-          autocomplete: true,
-          allowCustom: true
+          source: allExercises.slice(), // 初期候補は全種目一覧                                    [oai_citation:13‡Jspreadsheet CE](https://bossanova.uk/jspreadsheet/v3/getting-started?utm_source=chatgpt.com)
+          autocomplete: true,          // キーボード入力で候補を絞り込み                                [oai_citation:14‡npm](https://www.npmjs.com/package/jexcel/v/3.5.0?utm_source=chatgpt.com)
+          allowCustom: true            // リストにない種目も自由入力可
         },
         {
           type: 'numeric',
@@ -152,18 +118,19 @@
       allowManualInsertRow: true,
       allowDeleteRow: true,
       contextMenu: false,
-      onchange: function(instance, cell, x, y, value) {
-        // x=列インデックス、y=行インデックス、value=入力値
-        // 「部位」列が変更されたら、同じ行の「種目名」の候補を更新
+      onchange: function(instance, cell, x, y, value) {                                    //  [oai_citation:15‡Jspreadsheet CE](https://bossanova.uk/jspreadsheet/v3/getting-started?utm_source=chatgpt.com) [oai_citation:16‡GitHub](https://github.com/jspreadsheet/ce?utm_source=chatgpt.com)
+        // x = 列インデックス、y = 行インデックス、value = 入力値
+        // 「部位」列 (x === 1) が変更されたときに、同じ行の「種目名」候補を更新する
         if (x === 1) {
-          const selectedPart = value;
+          const selectedPart = value;                                                      // 変更された部位名
           const rowIndex = y;
           const targetCol = 2; // 種目名の列インデックス
 
-          // 対応する種目リスト or 全種目をセット
+          // 部位がマップにあればその部位の種目リストを、なければ全種目一覧をセット
           const newSource = exercisesByPart[selectedPart] || allExercises;
-          instance.setSourceValue(rowIndex, targetCol, newSource);
-          // 種目セルを空クリア（前の候補が残っている可能性があるため）
+          instance.setSourceValue(rowIndex, targetCol, newSource);                        // 候補を差し替え                                     [oai_citation:17‡Jspreadsheet CE](https://bossanova.uk/jspreadsheet/v3/getting-started?utm_source=chatgpt.com) [oai_citation:18‡GitHub](https://github.com/jspreadsheet/ce?utm_source=chatgpt.com)
+
+          // 既存の種目選択をクリア (部位変更後に古い値が残ってしまうのを防ぐ)
           instance.setValueFromCoords(targetCol, rowIndex, "");
         }
       }
@@ -174,7 +141,7 @@
     //    （アプリ側インポート形式に合わせる例）
     // ─────────────────────────────
     function exportJSON() {
-      const data = spreadsheet.getData();
+      const data = spreadsheet.getData();                                                  // jExcel v3 の getData() で全データを取得    [oai_citation:19‡Jspreadsheet CE](https://bossanova.uk/jspreadsheet/v3/getting-started?utm_source=chatgpt.com)
       const exerciseNameToId = {};
       const workoutMap = {};
 
@@ -190,17 +157,18 @@
         const reps = parseInt(row[4]) || 0;
         const note = row[5] || "";
 
+        // 日付が空ならスキップ
         if (!dateStr) return;
         const keyName = exerciseName.trim();
         if (!keyName) return;
 
-        // 種目名 → UUID マップを作成
+        // 種目名 → UUID マップ (crypto.randomUUID() で一意な ID を生成)
         if (!exerciseNameToId[keyName]) {
-          exerciseNameToId[keyName] = crypto.randomUUID();
+          exerciseNameToId[keyName] = crypto.randomUUID();                                // ブラウザ内で簡易に UUID を生成                                     [oai_citation:20‡Jspreadsheet CE](https://bossanova.uk/jspreadsheet/v3/getting-started?utm_source=chatgpt.com) [oai_citation:21‡npm](https://www.npmjs.com/package/jexcel/v/3.5.0?utm_source=chatgpt.com)
         }
         const exId = exerciseNameToId[keyName];
 
-        // 日付ごとに Workout をまとめる
+        // 日付 (YYYY-MM-DD) をキーにして Workout をまとめる
         const dateKey = new Date(dateStr).toISOString().slice(0, 10);
         if (!workoutMap[dateKey]) {
           workoutMap[dateKey] = {
@@ -217,12 +185,15 @@
         });
       });
 
+      // exercises 配列を構築 (ID, name, sortOrder, bodyPart の各フィールド)
       const exercises = Object.entries(exerciseNameToId).map(([name, id]) => ({
         id: id,
         name: name,
         sortOrder: 0,
         bodyPart: ""
       }));
+
+      // workouts 配列をまとめる
       const workouts = Object.values(workoutMap);
       const bodyParts = [];
       const personalRecords = [];
@@ -233,6 +204,8 @@
         personalRecords: personalRecords,
         workouts: workouts
       };
+
+      // JSON を生成してダウンロード
       const blob = new Blob([JSON.stringify(finalObj, null, 2)], { type: "application/json" });
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
