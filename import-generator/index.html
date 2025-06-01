@@ -87,7 +87,7 @@
     // 2) JSpreadsheet を初期化
     const spreadsheet = jspreadsheet(document.getElementById('spreadsheet'), {
       data: [
-        // 初期行を空行にしておく（例: 部位と種目は空文字）
+        // 初期行を空行にしておく
         ["", "", "", 0, 0, ""]
       ],
       columns: [
@@ -114,9 +114,10 @@
           source: [],
           autocomplete: true,
           allowCustom: true,
-          filter: function (instance, col, row, value) {
-            // 第一引数 instance を使って、同じ行の「部位」列の値を取得
-            const selectedPart = instance.getValueFromCoords(1, row);
+          filter: function(cell, col, row, value) {
+            // グローバルな spreadsheet インスタンスを使って
+            // 同じ行の「部位」列（列インデックス1）の値を取得
+            const selectedPart = spreadsheet.getValueFromCoords(1, row);
             return exercisesByPart[selectedPart] || [];
           }
         },
