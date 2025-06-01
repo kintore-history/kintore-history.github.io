@@ -2,25 +2,31 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>部位連動＋自由入力ドロップダウン（部位未選択時は全種目を表示）</title>
+  <title>部位連動＋自由入力ドロップダウン（クリックで開く）</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!-- jsuites / jspreadsheet の CSS 読み込み -->
+  <!-- jsuites / jspreadsheet の CSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsuites@4/dist/jsuites.min.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jspreadsheet-ce@4.10.2/dist/jspreadsheet.min.css" />
+  <style>
+    /* ちょっとだけ見た目を整える例 */
+    body { font-family: sans-serif; padding: 1em; }
+    #spreadsheet { margin-bottom: 1em; }
+    button { padding: 0.5em 1em; font-size: 1rem; }
+  </style>
 </head>
 <body>
   <h1>部位連動＋自由入力ドロップダウン</h1>
-  <p>部位を選んでいないときも「全種目一覧」が表示されます。</p>
-  <div id="spreadsheet" style="margin-bottom: 1em;"></div>
+  <p>「種目名」セルはシングルクリックでプルダウンが開き、リスト外の文字も入力できます。</p>
+  <div id="spreadsheet"></div>
   <button onclick="exportJSON()">アプリ形式でJSONを生成＆ダウンロード</button>
 
-  <!-- jsuites / jspreadsheet の JS 読み込み -->
+  <!-- jsuites / jspreadsheet の JS -->
   <script src="https://cdn.jsdelivr.net/npm/jsuites@4/dist/jsuites.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspreadsheet-ce@4.10.2/dist/index.min.js"></script>
 
   <script>
     // ───────────────
-    // 1) 部位と種目マスタ
+    // 1) 部位と種目マスタ（既存の選択肢）
     // ───────────────
     const bodyPartOptions = ["胸", "背中", "肩", "腕", "腹", "脚"];
     const exercisesByPart = {
@@ -88,16 +94,18 @@
     };
 
     // ───────────────
-    // 2) 全種目を一つの配列にまとめる（部位未選択時に使う）
+    //  全種目をまとめた配列（部位未選択時に表示する）
     // ───────────────
     const allExercises = Object.values(exercisesByPart).flat();
 
     // ───────────────
-    // 3) JSpreadsheet を初期化
+    // 2) JSpreadsheet を初期化
+    //    → editOnClick: true でシングルクリック時にセル編集／プルダウンを開く
     // ───────────────
     const spreadsheet = jspreadsheet(document.getElementById('spreadsheet'), {
+      editOnClick: true,     // ← ここを true にするとダブルクリック不要でプルダウンを開ける
       data: [
-        // 初期行：日付、部位、種目、重量、回数、メモ の６列
+        // 初期行：日付、部位、種目、重量、回数、メモ の６列を一行だけ用意
         ["", "", "", 0, 0, ""]
       ],
       columns: [
@@ -108,30 +116,29 @@
           options: { format: 'YYYY-MM-DD' }
         },
         {
-          // 「部位」列：固定リストから選択
+          // 「部位」列：固定プルダウン
           type: 'dropdown',
           title: '部位',
           width: 100,
           source: bodyPartOptions,
           autocomplete: true,
-          allowCustom: false
+          allowCustom: false   // 「部位」はリスト内のみ
         },
         {
-          // 「種目名」列：部位と連動、かつ自由入力を許可
+          // 「種目名」列：部位連動＋自由入力
           type: 'dropdown',
           title: '種目名',
-          width: 180,
-          source: [],          // 初期は空。filter で動的にセットする
-          autocomplete: true,  // キーボード入力で候補を絞り込み
-          allowCustom: true,   // リストにない文字列でも入力可能
+          width: 200,
+          source: [],           // 空にしておき、filter で動的に上書きする
+          autocomplete: true,   // キーボード入力で候補を絞り込める
+          allowCustom: true,    // リストにない文字列を書いても OK
           filter: function(cell, col, row, value) {
-            // 同じ行の「部位」列（列インデックス1）の値を取得
+            // 「部位」列（列インデックス1）の値を取得
             const selectedPart = spreadsheet.getValueFromCoords(1, row);
-            // 部位が選択されている場合は、その部位に対応する種目を返す
             if (selectedPart && exercisesByPart[selectedPart]) {
               return exercisesByPart[selectedPart];
             }
-            // 部位が未選択またはマップに存在しない場合は「全種目一覧」を返す
+            // 部位が未選択、またはマップにない場合は全種目を返す
             return allExercises;
           }
         },
@@ -160,8 +167,8 @@
     });
 
     // ─────────────────────────────
-    // 4) JSON生成＆ダウンロード関数
-    //    （アプリのインポート形式に合わせる例）
+    // 3) JSON生成＆ダウンロード関数
+    //    （アプリインポート形式に合わせる例）
     // ─────────────────────────────
     function exportJSON() {
       const data = spreadsheet.getData();
@@ -180,18 +187,19 @@
         const reps = parseInt(row[4]) || 0;
         const note = row[5] || "";
 
-        // 日付が空の場合はスキップ
-        if (!dateStr) {
-          return;
-        }
+        // 日付が空ならスキップ
+        if (!dateStr) return;
+
         const keyName = exerciseName.trim();
         if (!keyName) return;
 
+        // 種目 → UUID マップ作成
         if (!exerciseNameToId[keyName]) {
           exerciseNameToId[keyName] = crypto.randomUUID();
         }
         const exId = exerciseNameToId[keyName];
 
+        // 日付ごとに Workout をまとめる
         const dateKey = new Date(dateStr).toISOString().slice(0, 10);
         if (!workoutMap[dateKey]) {
           workoutMap[dateKey] = {
