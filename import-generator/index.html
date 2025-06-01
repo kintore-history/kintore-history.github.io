@@ -2,218 +2,639 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>部位連動＋自由入力ドロップダウン（JSpreadsheet v3 安定版）</title>
+  <title>ワークアウト入力テーブル（自作＋複数選択コピー対応）</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <!-- jsuites v3 の CSS（任意） -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsuites@3/dist/jsuites.min.css" />
-  <!-- JSpreadsheet v3（旧 jExcel v3）の CSS -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jspreadsheet@3.21.0/dist/jexcel.css" />
-
   <style>
-    body { font-family: sans-serif; padding: 1em; }
-    #spreadsheet { margin-bottom: 1em; }
-    button { padding: 0.5em 1em; font-size: 1rem; }
+    body {
+      font-family: sans-serif;
+      padding: 1em;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 1em;
+      user-select: none; /* ドラッグ選択の際に意図しないテキスト選択を防ぐ */
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 0.5em;
+      text-align: left;
+    }
+    th {
+      background: #f5f5f5;
+    }
+    input, select, button {
+      font-size: 1rem;
+    }
+    .btn {
+      padding: 0.5em 1em;
+      margin-right: 0.5em;
+    }
+    .delete-row {
+      background: #e74c3c;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    .add-row {
+      background: #3498db;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    .export-json {
+      background: #2ecc71;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    /* datalist はデフォルトで非表示 */
+    datalist {
+      display: none;
+    }
+
+    /* ■追加：選択中セルをハイライトするためのクラス */
+    .selected-cell {
+      background-color: rgba(52, 152, 219, 0.3);
+    }
   </style>
 </head>
 <body>
-  <h1>部位連動＋自由入力ドロップダウン（v3 安定版）</h1>
-  <p>「種目名」セルは部位に応じて絞り込まれ、リストにない文字も入力できます。</p>
 
-  <div id="spreadsheet"></div>
-  <button onclick="exportJSON()">アプリ形式でJSON生成＆ダウンロード</button>
+  <h1>ワークアウト入力テーブル（自作＋複数選択コピー対応）</h1>
+  <p>部位を選ぶと種目が絞り込まれます。種目リストにない文字列も入力できます。</p>
 
-  <!-- jsuites v3 と JSpreadsheet v3（jExcel v3）を読み込む順序に注意する -->
-  <script src="https://cdn.jsdelivr.net/npm/jsuites@3/dist/jsuites.min.js"></script>      <!-- jsuites v3 (任意)  -->
-  <script src="https://cdn.jsdelivr.net/npm/jspreadsheet@3.21.0/dist/jexcel.js"></script>  <!-- jExcel v3 (JSpreadsheet v3)  -->
+  <table id="workout-table">
+    <thead>
+      <tr>
+        <th>日付</th>
+        <th>部位</th>
+        <th>種目名</th>
+        <th>重量(kg)</th>
+        <th>回数</th>
+        <th>メモ</th>
+        <th>削除</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- JavaScript で <tr> を追加 -->
+    </tbody>
+  </table>
+
+  <button id="add-row-btn" class="btn add-row">＋行追加</button>
+  <button id="export-json-btn" class="btn export-json">JSONを生成してダウンロード</button>
 
   <script>
-    // ───────────────
-    // 1) 既存の「部位」と「種目」一覧
-    // ───────────────
-    const bodyPartOptions = ["胸", "背中", "肩", "腕", "腹", "脚"];  //  [oai_citation:4‡できるネット](https://dekiru.net/all/?utm_source=chatgpt.com)
-    const exercisesByPart = {                                         //  [oai_citation:5‡できるネット](https://dekiru.net/all/?utm_source=chatgpt.com)
+    // ─────────────────────────────
+    // 1) 部位と種目の一覧定義
+    // ─────────────────────────────
+    const bodyPartOptions = ["胸", "背中", "肩", "腕", "腹", "脚"];
+    const exercisesByPart = {
       "胸": [
-        "ベンチプレス", "インクラインベンチプレス", "ダンベルプレス", "インクラインダンベルプレス",
-        "ディップス", "チェストプレス", "ダンベルフライ", "インクラインダンベルフライ",
-        "ペクトラルフライ", "インクラインプレス", "ケーブルクロスオーバー", "ケーブルフライ"
+        "ベンチプレス","インクラインベンチプレス","ダンベルプレス",
+        "インクラインダンベルプレス","ディップス","チェストプレス",
+        "ダンベルフライ","インクラインダンベルフライ","ペクトラルフライ",
+        "インクラインプレス","ケーブルクロスオーバー","ケーブルフライ"
       ],
       "背中": [
-        "ラットプルダウン", "チンニング（懸垂）", "デッドリフト", "シーテッドロー",
-        "ベントオーバーロー", "ケーブルプルオーバー", "ワンハンドローイング", "シーテッドロウ"
+        "ラットプルダウン","チンニング（懸垂）","デッドリフト","シーテッドロー",
+        "ベントオーバーロー","ケーブルプルオーバー","ワンハンドローイング","シーテッドロウ"
       ],
       "肩": [
-        "サイドレイズ", "ショルダープレス", "ダンベルショルダープレス", "リアレイズ",
-        "ミリタリープレス", "アーノルドプレス", "リアデルト", "フロントレイズ",
-        "ケーブルサイドレイズ", "インクラインサイドレイズ"
+        "サイドレイズ","ショルダープレス","ダンベルショルダープレス","リアレイズ",
+        "ミリタリープレス","アーノルドプレス","リアデルト","フロントレイズ",
+        "ケーブルサイドレイズ","インクラインサイドレイズ"
       ],
       "腕": [
-        "アームカール", "インクラインアームカール", "ハンマーカール", "バーベルカール",
-        "ダンベルカール", "フレンチプレス", "ケーブルプレスダウン", "ケーブルカール",
-        "スカルクラッシャー", "EZバーカール", "インクラインハンマーカール"
+        "アームカール","インクラインアームカール","ハンマーカール","バーベルカール",
+        "ダンベルカール","フレンチプレス","ケーブルプレスダウン","ケーブルカール",
+        "スカルクラッシャー","EZバーカール","インクラインハンマーカール"
       ],
-      "腹": [
-        "アブドミナル", "アブローラー"
-      ],
-      "脚": [
-        "スクワット", "レッグプレス", "レッグエクステンション", "レッグカール",
-        "ブルガリアンスクワット", "カーフレイズ"
-      ]
+      "腹": ["アブドミナル","アブローラー"],
+      "脚": ["スクワット","レッグプレス","レッグエクステンション","レッグカール","ブルガリアンスクワット","カーフレイズ"]
     };
-    // 部位未選択時に全種目を候補にするため、配列をフラット化しておく
-    const allExercises = Object.values(exercisesByPart).flat();      //  [oai_citation:6‡できるネット](https://dekiru.net/all/?utm_source=chatgpt.com)
-
-    // ───────────────
-    // 2) JSpreadsheet v3（jExcel v3）を初期化
-    //    ・editOnClick: true      → シングルクリックでセル編集開始（ダブルクリック不要）  [oai_citation:7‡できるネット](https://dekiru.net/all/?utm_source=chatgpt.com)
-    //    ・columns[2].source       → 初期は全種目一覧
-    //    ・onchange イベント       → 「部位」変更時にその行の「種目名」候補を差し替え  [oai_citation:8‡できるネット](https://dekiru.net/all/?utm_source=chatgpt.com)
-    // ───────────────
-    const spreadsheet = jexcel(document.getElementById('spreadsheet'), { //  [oai_citation:9‡できるネット](https://dekiru.net/all/?utm_source=chatgpt.com)
-      editOnClick: true,
-      data: [
-        // 初期行：日付, 部位, 種目, 重量, 回数, メモ の順番
-        ["", "", "", 0, 0, ""]
-      ],
-      columns: [
-        {
-          type: 'calendar',
-          title: '日付',
-          width: 120,
-          options: { format: 'YYYY-MM-DD' }
-        },
-        {
-          type: 'dropdown',
-          title: '部位',
-          width: 100,
-          source: bodyPartOptions,   // 部位リストを指定  [oai_citation:10‡できるネット](https://dekiru.net/all/?utm_source=chatgpt.com)
-          autocomplete: true,        // キーボード入力で候補を絞り込み  [oai_citation:11‡できるネット](https://dekiru.net/all/?utm_source=chatgpt.com)
-          allowCustom: false
-        },
-        {
-          type: 'dropdown',
-          title: '種目名',
-          width: 200,
-          source: allExercises.slice(), // 初期候補は全種目一覧  [oai_citation:12‡できるネット](https://dekiru.net/all/?utm_source=chatgpt.com)
-          autocomplete: true,          // キーボード入力で候補を絞り込み  [oai_citation:13‡できるネット](https://dekiru.net/all/?utm_source=chatgpt.com)
-          allowCustom: true            // リストにない文字も自由入力可  [oai_citation:14‡できるネット](https://dekiru.net/all/?utm_source=chatgpt.com)
-        },
-        {
-          type: 'numeric',
-          title: '重量(kg)',
-          width: 80
-        },
-        {
-          type: 'numeric',
-          title: '回数',
-          width: 60
-        },
-        {
-          type: 'text',
-          title: 'メモ',
-          width: 120
-        }
-      ],
-      minDimensions: [6, 5],
-      allowInsertColumn: false,
-      allowManualInsertColumn: false,
-      allowManualInsertRow: true,
-      allowDeleteRow: true,
-      contextMenu: false,
-      onchange: function(instance, cell, x, y, value) {                         //  [oai_citation:15‡できるネット](https://dekiru.net/all/?utm_source=chatgpt.com)
-        // x = 列インデックス、y = 行インデックス、value = 入力された文字列
-        // 「部位」列 (x === 1) が変更されたとき、その行の「種目名」候補を更新する
-        if (x === 1) {
-          const selectedPart = value;                                              // 変更された部位名
-          const rowIndex = y;
-          const targetCol = 2; // 種目名の列インデックス
-
-          // 対応する種目リスト or 全種目一覧を取得
-          const newSource = exercisesByPart[selectedPart] || allExercises;
-          instance.setSourceValue(rowIndex, targetCol, newSource);                // 候補を差し替え  [oai_citation:16‡できるネット](https://dekiru.net/all/?utm_source=chatgpt.com)
-
-          // 既存の「種目名」値をクリア (部位変更後に古い値が残るのを防ぐ)
-          instance.setValueFromCoords(targetCol, rowIndex, "");
-        }
-      }
-    });
+    const allExercises = Object.values(exercisesByPart).flat();
 
     // ─────────────────────────────
-    // 3) JSON生成＆ダウンロード関数
-    //    （アプリ側インポート形式に合わせる例）
+    // 2) DOM 要素を取得
     // ─────────────────────────────
-    function exportJSON() {
-      const data = spreadsheet.getData();                                          // jExcel v3 の getData()  [oai_citation:17‡できるネット](https://dekiru.net/all/?utm_source=chatgpt.com)
-      const exerciseNameToId = {};
-      const workoutMap = {};
+    document.addEventListener("DOMContentLoaded", () => {
+      const tbody = document.querySelector("#workout-table tbody");
+      const addRowBtn = document.getElementById("add-row-btn");
+      const exportJsonBtn = document.getElementById("export-json-btn");
 
-      function toISO8601(dateString) {
-        return new Date(dateString).toISOString();
-      }
+      // 行ごとにユニークな ID 接尾辞として使うカウンタ
+      let rowCount = 0;
 
-      data.forEach(row => {
-        const dateStr = row[0] || "";
-        const bodyPart = row[1] || "";
-        const exerciseName = row[2] || "";
-        const weight = parseFloat(row[3]) || 0;
-        const reps = parseInt(row[4]) || 0;
-        const note = row[5] || "";
+      // ─────────────────────────────
+      // ■ ここから追加：複数選択用の変数定義
+      // ─────────────────────────────
+      let isMouseDown = false;
+      let startCell = null;       // 選択開始セル
+      let selectedCells = [];     // 現在選択中のセル要素（配列）
 
-        // 日付が空の場合はスキップ
-        if (!dateStr) return;
-        const keyName = exerciseName.trim();
-        if (!keyName) return;
-
-        // 種目名 → UUID マップ (crypto.randomUUID() で生成)  [oai_citation:18‡できるネット](https://dekiru.net/all/?utm_source=chatgpt.com)
-        if (!exerciseNameToId[keyName]) {
-          exerciseNameToId[keyName] = crypto.randomUUID();
-        }
-        const exId = exerciseNameToId[keyName];
-
-        // 日付 (YYYY-MM-DD) をキーに Workouts をまとめる
-        const dateKey = new Date(dateStr).toISOString().slice(0, 10);
-        if (!workoutMap[dateKey]) {
-          workoutMap[dateKey] = {
-            date: toISO8601(dateKey),
-            memo: "",
-            sets: []
-          };
-        }
-        workoutMap[dateKey].sets.push({
-          exerciseId: exId,
-          weight: weight,
-          reps: reps,
-          memo: note
+      // (a) 指定範囲を一度クリアする関数
+      function clearSelection() {
+        selectedCells.forEach(cell => {
+          cell.classList.remove("selected-cell");
         });
+        selectedCells = [];
+      }
+
+      // (b) 新たに選択範囲を塗りつぶす関数
+      //    startCell, endCell の位置から矩形範囲を計算
+      function selectRange(endCell) {
+        clearSelection();
+        if (!startCell || !endCell) return;
+        // startCell, endCell は <input> 要素
+        const allInputs = Array.from(tbody.querySelectorAll("input, select"));
+        // 「行番号」と「列番号」を得て比較できるように、dataset.rowId と name 属性から解析
+        function parsePosition(elem) {
+          // name 属性例: "exercise-row-3"
+          const name = elem.name; // 例："exercise-row-3"
+          // 最後のハイフン以降が行ID
+          const parts = name.split("-");
+          const rowId = parts[parts.length - 1]; // e.g. "row-3" → "3"
+          // 列は要素の種類で判断： date=0, body=1, exercise=2, weight=3, reps=4, note=5
+          let colIndex = 0;
+          const prefix = parts[0];
+          switch (prefix) {
+            case "date": colIndex = 0; break;
+            case "body": colIndex = 1; break;
+            case "exercise": colIndex = 2; break;
+            case "weight": colIndex = 3; break;
+            case "reps": colIndex = 4; break;
+            case "note": colIndex = 5; break;
+            default: colIndex = 0;
+          }
+          return { row: parseInt(rowId, 10), col: colIndex };
+        }
+        const pos1 = parsePosition(startCell);
+        const pos2 = parsePosition(endCell);
+        const minRow = Math.min(pos1.row, pos2.row);
+        const maxRow = Math.max(pos1.row, pos2.row);
+        const minCol = Math.min(pos1.col, pos2.col);
+        const maxCol = Math.max(pos1.col, pos2.col);
+
+        // すべての <input> / <select> をチェックし、範囲内のものを選択
+        allInputs.forEach(elem => {
+          const pos = parsePosition(elem);
+          if (pos.row >= minRow && pos.row <= maxRow
+              && pos.col >= minCol && pos.col <= maxCol) {
+            selectedCells.push(elem);
+            elem.classList.add("selected-cell");
+          }
+        });
+      }
+
+      // ─────────────────────────────
+      // 3) 行を追加する関数
+      // ─────────────────────────────
+      function addRow() {
+        rowCount += 1;
+        const rowId = `row-${rowCount}`;
+
+        const tr = document.createElement("tr");
+        tr.dataset.rowId = rowId;
+
+        // 2-1) 日付セル
+        const tdDate = document.createElement("td");
+        const inputDate = document.createElement("input");
+        inputDate.type = "date";
+        inputDate.name = `date-${rowId}`;
+        inputDate.style.width = "120px";
+        tdDate.appendChild(inputDate);
+
+        // 2-2) 部位セル
+        const tdBodyPart = document.createElement("td");
+        const selectBody = document.createElement("select");
+        selectBody.name = `body-${rowId}`;
+        selectBody.style.width = "100px";
+        const emptyOption = document.createElement("option");
+        emptyOption.value = "";
+        emptyOption.textContent = "--";
+        selectBody.appendChild(emptyOption);
+        bodyPartOptions.forEach(part => {
+          const opt = document.createElement("option");
+          opt.value = part;
+          opt.textContent = part;
+          selectBody.appendChild(opt);
+        });
+        tdBodyPart.appendChild(selectBody);
+
+        // 2-3) 種目セル
+        const tdExercise = document.createElement("td");
+        const inputExercise = document.createElement("input");
+        inputExercise.type = "text";
+        inputExercise.name = `exercise-${rowId}`;
+        inputExercise.setAttribute("list", `datalist-${rowId}`);
+        inputExercise.style.width = "200px";
+        tdExercise.appendChild(inputExercise);
+        const datalist = document.createElement("datalist");
+        datalist.id = `datalist-${rowId}`;
+        allExercises.forEach(ex => {
+          const opt = document.createElement("option");
+          opt.value = ex;
+          datalist.appendChild(opt);
+        });
+        tdExercise.appendChild(datalist);
+
+        // 2-4) 重量セル
+        const tdWeight = document.createElement("td");
+        // input field
+        const inputWeight = document.createElement("input");
+        inputWeight.type = "text";
+        inputWeight.name = `weight-${rowId}`;
+        inputWeight.style.width = "3em";
+        inputWeight.setAttribute("inputmode", "decimal");
+        inputWeight.setAttribute("pattern", "\\d*(\\.\\d+)?");
+        inputWeight.addEventListener("input", (e) => {
+          let val = e.target.value.replace(/[０-９]/g, (s) =>
+            String.fromCharCode(s.charCodeAt(0) - 0xFEE0)
+          );
+          let cleaned = val.replace(/[^0-9.]/g, "");
+          const parts = cleaned.split(".");
+          if (parts.length > 2) {
+            alert("小数点は一つまで入力できます");
+            cleaned = parts[0] + "." + parts.slice(1).join("");
+          }
+          e.target.value = cleaned;
+        });
+        // minus button
+        const btnWeightMinus = document.createElement("button");
+        btnWeightMinus.type = "button";
+        btnWeightMinus.textContent = "－";
+        btnWeightMinus.addEventListener("click", () => {
+          let current = parseFloat(inputWeight.value);
+          if (isNaN(current)) current = 0;
+          const next = Math.max(0, current - 2.5);
+          inputWeight.value = next.toString();
+        });
+        // plus button
+        const btnWeightPlus = document.createElement("button");
+        btnWeightPlus.type = "button";
+        btnWeightPlus.textContent = "＋";
+        btnWeightPlus.addEventListener("click", () => {
+          let current = parseFloat(inputWeight.value);
+          if (isNaN(current)) current = 0;
+          const next = current + 2.5;
+          inputWeight.value = next.toString();
+        });
+        // stepper container
+        const weightContainer = document.createElement("div");
+        weightContainer.className = "stepper";
+        weightContainer.appendChild(inputWeight);
+        weightContainer.appendChild(btnWeightMinus);
+        weightContainer.appendChild(btnWeightPlus);
+        tdWeight.appendChild(weightContainer);
+
+        // 2-5) 回数セル
+        const tdReps = document.createElement("td");
+        const inputReps = document.createElement("input");
+        inputReps.type = "text";
+        inputReps.name = `reps-${rowId}`;
+        inputReps.style.width = "3em";
+        inputReps.setAttribute("inputmode", "numeric");
+        inputReps.setAttribute("pattern", "\\d*");
+        inputReps.addEventListener("input", (e) => {
+          let val = e.target.value.replace(/[０-９]/g, (s) =>
+            String.fromCharCode(s.charCodeAt(0) - 0xFEE0)
+          );
+          let cleaned = val.replace(/[^0-9]/g, "");
+          if (cleaned !== val) {
+            alert("半角数字のみ入力可能です");
+          }
+          e.target.value = cleaned;
+        });
+        const btnRepsMinus = document.createElement("button");
+        btnRepsMinus.type = "button";
+        btnRepsMinus.textContent = "－";
+        btnRepsMinus.addEventListener("click", () => {
+          let current = parseInt(inputReps.value, 10);
+          if (isNaN(current)) current = 0;
+          const next = Math.max(0, current - 1);
+          inputReps.value = next.toString();
+        });
+        const btnRepsPlus = document.createElement("button");
+        btnRepsPlus.type = "button";
+        btnRepsPlus.textContent = "＋";
+        btnRepsPlus.addEventListener("click", () => {
+          let current = parseInt(inputReps.value, 10);
+          if (isNaN(current)) current = 0;
+          const next = current + 1;
+          inputReps.value = next.toString();
+        });
+        const repsContainer = document.createElement("div");
+        repsContainer.className = "stepper";
+        repsContainer.appendChild(inputReps);
+        repsContainer.appendChild(btnRepsMinus);
+        repsContainer.appendChild(btnRepsPlus);
+        tdReps.appendChild(repsContainer);
+
+        // 2-6) メモセル
+        const tdNote = document.createElement("td");
+        const inputNote = document.createElement("input");
+        inputNote.type = "text";
+        inputNote.name = `note-${rowId}`;
+        inputNote.style.width = "120px";
+        tdNote.appendChild(inputNote);
+
+        // 2-7) 削除ボタンセル
+        const tdDelete = document.createElement("td");
+        const btnDelete = document.createElement("button");
+        btnDelete.textContent = "削除";
+        btnDelete.className = "delete-row";
+        btnDelete.addEventListener("click", () => {
+          tr.remove();
+        });
+        tdDelete.appendChild(btnDelete);
+        // コピーボタン追加
+        const btnCopy = document.createElement("button");
+        btnCopy.textContent = "コピー";
+        btnCopy.className = "copy-row";
+        btnCopy.addEventListener("click", () => {
+          // 1) 現在の行の入力値を取得
+          const inputsOld = tr.querySelectorAll("input, select");
+          // 2) 新しい行を追加
+          addRow();
+          // 3) 追加された最後の行に値をコピー
+          const newTr = tbody.querySelector("tr:last-child");
+          const inputsNew = newTr.querySelectorAll("input, select");
+          inputsOld.forEach((oldElem, index) => {
+            const newElem = inputsNew[index];
+            newElem.value = oldElem.value;
+            // 部位がコピーされた場合、種目候補を更新するため change イベントを発火
+            if (newElem.tagName === "SELECT" && index === 1) {
+              newElem.dispatchEvent(new Event("change"));
+            }
+          });
+        });
+        tdDelete.appendChild(btnCopy);
+
+        tr.appendChild(tdDate);
+        tr.appendChild(tdBodyPart);
+        tr.appendChild(tdExercise);
+        tr.appendChild(tdWeight);
+        tr.appendChild(tdReps);
+        tr.appendChild(tdNote);
+        tr.appendChild(tdDelete);
+
+        tbody.appendChild(tr);
+
+        // 部位変更で種目候補を更新
+        selectBody.addEventListener("change", () => {
+          const selectedPart = selectBody.value;
+          let optionsList = [];
+          if (selectedPart && exercisesByPart[selectedPart]) {
+            optionsList = exercisesByPart[selectedPart];
+          } else {
+            optionsList = allExercises;
+          }
+          datalist.innerHTML = "";
+          optionsList.forEach(ex => {
+            const opt = document.createElement("option");
+            opt.value = ex;
+            datalist.appendChild(opt);
+          });
+          inputExercise.value = "";
+        });
+
+        // ■追加：各セル（input, select）に mousedown, mouseover, mouseup を設定
+        const allFields = [inputDate, selectBody, inputExercise, inputWeight, inputReps, inputNote];
+        allFields.forEach(elem => {
+          // mousedown：ドラッグで範囲選択開始（Shift不要）
+          elem.addEventListener("mousedown", (e) => {
+            // ドラッグ選択を開始
+            isMouseDown = true;
+            startCell = e.target;
+            selectRange(startCell);
+            // <input> や <select> ではフォーカスと入力を妨げないよう preventDefault は呼ばない
+            if (e.target.tagName !== "INPUT" && e.target.tagName !== "SELECT") {
+              e.preventDefault();
+            }
+          });
+          // mouseover：ドラッグ中に範囲選択を更新
+          elem.addEventListener("mouseover", (e) => {
+            if (!isMouseDown) return;
+            selectRange(e.target);
+          });
+          // mouseup：選択終了
+          elem.addEventListener("mouseup", () => {
+            isMouseDown = false;
+          });
+        });
+      }
+
+      // 初期行を 1 件作成
+      addRow();
+
+      // 「＋行追加」クリックで新しい行を追加
+      addRowBtn.addEventListener("click", addRow);
+
+      // ────────────────────────────────────────────
+      // ■ ここまで：選択機能の追加
+      // ────────────────────────────────────────────
+
+      // ■ ここから：コピー＆ペースト機能
+      let clipboardRange = null; // コピーされた範囲の値を保存 (2次元配列)
+
+      tbody.addEventListener("keydown", (e) => {
+        const active = document.activeElement;
+        // フォーカスが input または select でないなら無視
+        if (!active || (active.tagName !== "INPUT" && active.tagName !== "SELECT")) return;
+
+        // Ctrl+C (⌘+C) で選択中の範囲をコピー
+        if ((e.ctrlKey || e.metaKey) && e.key === "c") {
+          if (selectedCells.length === 0) return;
+          // 選択セルを座標順にソートし、2次元配列に格納
+          const positions = selectedCells.map(elem => {
+            // name 属性例："exercise-row-3" → ["exercise","row","3"]
+            const parts = elem.name.split("-");
+            const rowNum = parseInt(parts[parts.length - 1], 10);
+            const prefix = parts[0];
+            let colNum = 0;
+            switch (prefix) {
+              case "date": colNum = 0; break;
+              case "body": colNum = 1; break;
+              case "exercise": colNum = 2; break;
+              case "weight": colNum = 3; break;
+              case "reps": colNum = 4; break;
+              case "note": colNum = 5; break;
+              default: colNum = 0;
+            }
+            return { elem, row: rowNum, col: colNum };
+          });
+          // 2次元範囲の min/max を求める
+          const rows = positions.map(p => p.row);
+          const cols = positions.map(p => p.col);
+          const minRow = Math.min(...rows), maxRow = Math.max(...rows);
+          const minCol = Math.min(...cols), maxCol = Math.max(...cols);
+          const numRows = maxRow - minRow + 1;
+          const numCols = maxCol - minCol + 1;
+
+          // 一旦クリップボードに 2次元配列を作成
+          clipboardRange = Array.from({ length: numRows }, () => Array(numCols).fill(""));
+          positions.forEach(p => {
+            const rIdx = p.row - minRow;
+            const cIdx = p.col - minCol;
+            clipboardRange[rIdx][cIdx] = p.elem.value;
+          });
+          e.preventDefault();
+        }
+
+        // Ctrl+V (⌘+V) でコピーした範囲を現在のセルを起点としてペースト
+        if ((e.ctrlKey || e.metaKey) && e.key === "v") {
+          if (!clipboardRange) return;
+          // 貼り付け先の startCell を矩形の左上とみなす
+          const dest = active;
+          const parts = dest.name.split("-");
+          const destRow = parseInt(parts[parts.length - 1], 10);
+          const destPrefix = parts[0];
+          let destCol = 0;
+          switch (destPrefix) {
+            case "date": destCol = 0; break;
+            case "body": destCol = 1; break;
+            case "exercise": destCol = 2; break;
+            case "weight": destCol = 3; break;
+            case "reps": destCol = 4; break;
+            case "note": destCol = 5; break;
+            default: destCol = 0;
+          }
+
+          // 2次元配列のサイズを取得
+          const copyRows = clipboardRange.length;
+          const copyCols = clipboardRange[0].length;
+
+          // 行数が足りない場合は補充
+          const existingRows = tbody.querySelectorAll("tr").length;
+          const neededRows = (destRow + copyRows - 1) - existingRows;
+          for (let i = 0; i < neededRows; i++) {
+            addRow();
+          }
+
+          // ペースト先セルをひとつずつ検索し、値をセット
+          // 既存の <tr> から <input> / <select> へアクセスする簡易関数
+          function getCellInput(rowNum, colNum) {
+            const tr = tbody.querySelector(`tr[data-row-id="row-${rowNum}"]`);
+            if (!tr) return null;
+            const inputs = tr.querySelectorAll("input, select");
+            return inputs[colNum] || null;
+          }
+
+          for (let dr = 0; dr < copyRows; dr++) {
+            for (let dc = 0; dc < copyCols; dc++) {
+              const targetCell = getCellInput(destRow + dr, destCol + dc);
+              if (targetCell) {
+                targetCell.value = clipboardRange[dr][dc];
+                // 部位列にペーストされた場合、種目候補を更新
+                if (destCol + dc === 1) {
+                  // 部位が変わったら対応する種目リストを更新
+                  const part = targetCell.value;
+                  const datalist = tbody.querySelector(`#datalist-row-${destRow + dr}`);
+                  const exerciseInput = getCellInput(destRow + dr, 2);
+                  let optList = [];
+                  if (part && exercisesByPart[part]) {
+                    optList = exercisesByPart[part];
+                  } else {
+                    optList = allExercises;
+                  }
+                  datalist.innerHTML = "";
+                  optList.forEach(ex => {
+                    const o = document.createElement("option");
+                    o.value = ex;
+                    datalist.appendChild(o);
+                  });
+                  exerciseInput.value = ""; // 既存の種目をクリア
+                }
+              }
+            }
+          }
+          e.preventDefault();
+        }
       });
 
-      // exercises 配列を作成 (id, name, sortOrder, bodyPart)
-      const exercises = Object.entries(exerciseNameToId).map(([name, id]) => ({
-        id: id,
-        name: name,
-        sortOrder: 0,
-        bodyPart: ""
-      }));
+      // ────────────────────────────────────────────────────
+      // 4) JSON 生成＆ダウンロード処理 (既存のまま)
+      // ────────────────────────────────────────────────────
+      exportJsonBtn.addEventListener("click", () => {
+        const rows = document.querySelectorAll("#workout-table tbody tr");
+        const exerciseNameToId = {};
+        const workoutMap = {};
 
-      // workouts 配列をまとめる
-      const workouts = Object.values(workoutMap);
-      const bodyParts = [];
-      const personalRecords = [];
+        function generateUUID() {
+          if (window.crypto && crypto.randomUUID) {
+            return crypto.randomUUID();
+          }
+          return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+            const r = (Math.random() * 16) | 0;
+            const v = c === 'x' ? r : (r & 0x3) | 0x8;
+            return v.toString(16);
+          });
+        }
 
-      const finalObj = {
-        bodyParts: bodyParts,
-        exercises: exercises,
-        personalRecords: personalRecords,
-        workouts: workouts
-      };
+        function toISO8601(dateString) {
+          return new Date(dateString).toISOString();
+        }
 
-      // JSON を生成してダウンロード (Blob + URL.createObjectURL)  [oai_citation:19‡できるネット](https://dekiru.net/all/?utm_source=chatgpt.com)
-      const blob = new Blob([JSON.stringify(finalObj, null, 2)], { type: "application/json" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = "WorkoutLog_Export.json";
-      link.click();
-    }
+        rows.forEach(tr => {
+          const inputs = tr.querySelectorAll("input, select");
+          const dateStr      = inputs[0].value;
+          const bodyPart     = inputs[1].value;
+          const exerciseName = inputs[2].value;
+          const weight       = parseFloat(inputs[3].value) || 0;
+          const reps         = parseInt(inputs[4].value) || 0;
+          const note         = inputs[5].value || "";
+
+          if (!dateStr || !exerciseName.trim()) return;
+          const keyName = exerciseName.trim();
+
+          if (!exerciseNameToId[keyName]) {
+            exerciseNameToId[keyName] = generateUUID();
+          }
+          const exId = exerciseNameToId[keyName];
+
+          const dateKey = new Date(dateStr).toISOString().slice(0, 10);
+          if (!workoutMap[dateKey]) {
+            workoutMap[dateKey] = {
+              date: toISO8601(dateKey),
+              memo: "",
+              sets: []
+            };
+          }
+          workoutMap[dateKey].sets.push({
+            exerciseId: exId,
+            weight: weight,
+            reps: reps,
+            memo: note
+          });
+        });
+
+        const exercises = Object.entries(exerciseNameToId).map(([name, id]) => ({
+          id: id,
+          name: name,
+          sortOrder: 0,
+          bodyPart: ""
+        }));
+        const workouts = Object.values(workoutMap);
+        const bodyParts = [];
+        const personalRecords = [];
+
+        const finalObj = {
+          bodyParts: bodyParts,
+          exercises: exercises,
+          personalRecords: personalRecords,
+          workouts: workouts
+        };
+
+        const blob = new Blob([JSON.stringify(finalObj, null, 2)], {
+          type: "application/json"
+        });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "WorkoutLog_Export.json";
+        link.click();
+      });
+    });
   </script>
 </body>
 </html>
