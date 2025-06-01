@@ -1,138 +1,185 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>筋トレログ JSON生成ツール（行追加・削除対応版）</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <!-- jsuites と jspreadsheet の CSS を読み込む -->
+  <meta charset="UTF-8" />
+  <title>部位連動＋自由入力ドロップダウン（既存種目リスト）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- jsuites / jspreadsheet の CSS 読み込み -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsuites@4/dist/jsuites.min.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jspreadsheet-ce@4.10.2/dist/jspreadsheet.min.css" />
 </head>
 <body>
-  <h1>筋トレデータ入力（JSpreadsheet版）</h1>
-  <p>「＋行追加」「−行削除」ボタンで明示的に行を追加・削除できます。</p>
+  <h1>部位連動＋自由入力ドロップダウン</h1>
+  <div id="spreadsheet" style="margin-bottom: 1em;"></div>
+  <button onclick="exportJSON()">アプリ形式でJSONを生成＆ダウンロード</button>
 
-  <div id="spreadsheet"></div>
-
-  <div style="margin-top: 1em;">
-    <!-- 行追加ボタン -->
-    <button id="addRowBtn" style="margin-right: 1em;">＋ 行追加</button>
-    <!-- 行削除ボタン -->
-    <button id="deleteRowBtn" style="margin-right: 1em;">− 行削除</button>
-    <!-- JSON生成ボタン -->
-    <button id="exportBtn">アプリ形式でJSONを生成＆ダウンロード</button>
-  </div>
-
-  <!-- jsuites と jspreadsheet の JS を読み込む -->
+  <!-- jsuites / jspreadsheet の JS 読み込み -->
   <script src="https://cdn.jsdelivr.net/npm/jsuites@4/dist/jsuites.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspreadsheet-ce@4.10.2/dist/index.min.js"></script>
 
   <script>
-    // 1) JSpreadsheet を初期化
+    // 1) 「部位」と「種目」の既存リスト
+    const bodyPartOptions = ["胸", "背中", "肩", "腕", "腹", "脚"];
+    const exercisesByPart = {
+      "胸": [
+        "ベンチプレス",
+        "インクラインベンチプレス",
+        "ダンベルプレス",
+        "インクラインダンベルプレス",
+        "ディップス",
+        "チェストプレス",
+        "ダンベルフライ",
+        "インクラインダンベルフライ",
+        "ペクトラルフライ",
+        "インクラインプレス",
+        "ケーブルクロスオーバー",
+        "ケーブルフライ"
+      ],
+      "背中": [
+        "ラットプルダウン",
+        "チンニング（懸垂）",
+        "デッドリフト",
+        "シーテッドロー",
+        "ベントオーバーロー",
+        "ケーブルプルオーバー",
+        "ワンハンドローイング",
+        "シーテッドロウ"
+      ],
+      "肩": [
+        "サイドレイズ",
+        "ショルダープレス",
+        "ダンベルショルダープレス",
+        "リアレイズ",
+        "ミリタリープレス",
+        "アーノルドプレス",
+        "リアデルト",
+        "フロントレイズ",
+        "ケーブルサイドレイズ",
+        "インクラインサイドレイズ"
+      ],
+      "腕": [
+        "アームカール",
+        "インクラインアームカール",
+        "ハンマーカール",
+        "バーベルカール",
+        "ダンベルカール",
+        "フレンチプレス",
+        "ケーブルプレスダウン",
+        "ケーブルカール",
+        "スカルクラッシャー",
+        "EZバーカール",
+        "インクラインハンマーカール"
+      ],
+      "腹": [
+        "アブドミナル",
+        "アブローラー"
+      ],
+      "脚": [
+        "スクワット",
+        "レッグプレス",
+        "レッグエクステンション",
+        "レッグカール",
+        "ブルガリアンスクワット",
+        "カーフレイズ"
+      ]
+    };
+
+    // 2) JSpreadsheet を初期化
     const spreadsheet = jspreadsheet(document.getElementById('spreadsheet'), {
       data: [
-        ["2025-06-01", "ベンチプレス", 60, 8, "", "初回"]
+        // 初期行を空行にしておく（例: 部位と種目は空文字）
+        ["", "", 0, 0, ""]
       ],
       columns: [
-        { type: 'calendar', title: '日付', width: 120, options: { format: 'YYYY-MM-DD' } },
-        { type: 'text',     title: '種目名', width: 150 },
-        { type: 'numeric',  title: '重量(kg)', width: 100 },
-        { type: 'numeric',  title: '回数',    width: 80 },
-        { type: 'text',     title: 'セット数(※未使用)', width: 0, visible: false },
-        { type: 'text',     title: 'メモ',    width: 180 },
+        {
+          type: 'calendar',
+          title: '日付',
+          width: 120,
+          options: { format: 'YYYY-MM-DD' }
+        },
+        {
+          // 「部位」列：固定リストから選択
+          type: 'dropdown',
+          title: '部位',
+          width: 100,
+          source: bodyPartOptions,
+          autocomplete: true,
+          allowCustom: false
+        },
+        {
+          // 「種目名」列：部位に連動かつ自由入力を許可
+          type: 'dropdown',
+          title: '種目名',
+          width: 180,
+          source: [],
+          autocomplete: true,
+          allowCustom: true,
+          filter: function(cell, col, row, source) {
+            // 同じ行の「部位」列（列インデックス1）の値を取得
+            const selectedPart = this.getValueFromCoords(1, row);
+            // 選択された部位に対応する種目リストを返す（なければ空配列）
+            return exercisesByPart[selectedPart] || [];
+          }
+        },
+        {
+          type: 'numeric',
+          title: '重量(kg)',
+          width: 80
+        },
+        {
+          type: 'numeric',
+          title: '回数',
+          width: 60
+        },
+        {
+          type: 'text',
+          title: 'メモ',
+          width: 120
+        }
       ],
       minDimensions: [6, 5],
       allowInsertColumn: false,
       allowManualInsertColumn: false,
-      allowManualInsertRow: false,  // 手動追加はボタン経由のみとする
+      allowManualInsertRow: true,
       allowDeleteRow: true,
       contextMenu: false
     });
 
-    // ──────────────────────────────────────────────────────
-    // 「＋ 行追加」ボタンの動作
-    // ──────────────────────────────────────────────────────
-    document.getElementById('addRowBtn').addEventListener('click', () => {
-      // 現在の行数を取得
-      const totalRows = spreadsheet.getData().length;
-      // 新規行としてすべて空欄の配列を作成（列数分）
-      const emptyRow = ["", "", "", "", "", ""];
-      // 最終行の下に空行を挿入
-      spreadsheet.insertRow(totalRows, emptyRow);
-
-      // 挿入後に「日付」列（列番号0）に今日の日付を自動入力（ISO 形式の年月日部分のみ）
-      const todayStr = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
-      spreadsheet.setValueFromCoords(0, totalRows, todayStr);
-
-      // 新しく追加した行を選択状態にしておく（視覚的にわかりやすく）
-      // setSelectedCell: 引数は (column_index, row_index, scroll_to_cell: boolean)
-      spreadsheet.setSelectedCell(0, totalRows, true);
-    });
-
-    // ──────────────────────────────────────────────────────
-    // 「− 行削除」ボタンの動作
-    // ──────────────────────────────────────────────────────
-    document.getElementById('deleteRowBtn').addEventListener('click', () => {
-      // 現在選択されているセルを取得
-      // getSelectedCell() は [columnIndex, rowIndex] の配列を返す
-      const selected = spreadsheet.getSelectedCell();
-      if (!selected) {
-        alert("まず、削除したい行のセルをクリックして選択してください。");
-        return;
-      }
-      const [, rowIndex] = selected; // 0番目が列、1番目が行
-      // 最低でも1行は残したい場合は以下のようにチェックする
-      const totalRows = spreadsheet.getData().length;
-      if (totalRows <= 1) {
-        alert("最終行は削除できません。");
-        return;
-      }
-      // 確認ダイアログ（任意）
-      const answer = confirm(`行 ${rowIndex + 1} を削除してよろしいですか？`);
-      if (answer) {
-        spreadsheet.deleteRow(rowIndex);
-      }
-    });
-
-    // ──────────────────────────────────────────────────────
-    // 「アプリ形式でJSONを生成＆ダウンロード」ボタン
-    // Swift の ImportDataView で受け取れる形式に整形してダウンロード
-    // （先ほどの exportJSON ロジックをそのまま使う）
-    // ──────────────────────────────────────────────────────
-    document.getElementById('exportBtn').addEventListener('click', () => {
-      // スプレッドシートの全データを取得
+    // 3) JSON生成＆ダウンロード関数（例：アプリ側インポート形式に合わせる）
+    function exportJSON() {
       const data = spreadsheet.getData();
-      // 種目名→UUID のマップを作成
       const exerciseNameToId = {};
-      // 日付ごとに Workout をまとめるマップ
       const workoutMap = {};
 
-      // 日付文字列 ("YYYY-MM-DD") を ISO8601 ("YYYY-MM-DDT00:00:00Z") に変換する関数
       function toISO8601(dateString) {
-        // dateString 例: "2025-06-01" → new Date(dateString) は UTC として扱われる
         return new Date(dateString).toISOString();
       }
 
       data.forEach(row => {
-        const dateStr = row[0];            // 例: "2025-06-01"
-        const exerciseName = row[1] || "";
-        const weight = parseFloat(row[2]) || 0;
-        const reps = parseInt(row[3]) || 0;
-        // row[4]（セット数）は今回は使わない想定
+        const dateStr = row[0] || "";
+        const bodyPart = row[1] || "";
+        const exerciseName = row[2] || "";
+        const weight = parseFloat(row[3]) || 0;
+        const reps = parseInt(row[4]) || 0;
         const note = row[5] || "";
 
-        if (!exerciseName) {
+        if (!dateStr) {
+          return; // 日付が未入力ならスキップ
+        }
+
+        // 種目名が空 or 部位と連動していない場合は自由入力を想定しつつ進める
+        let keyName = exerciseName.trim();
+        if (!keyName) {
           return; // 種目名が空ならスキップ
         }
 
-        // 種目名ごとに UUID をふる（未登録なら新規生成）
-        if (!exerciseNameToId[exerciseName]) {
-          exerciseNameToId[exerciseName] = crypto.randomUUID();
+        // 種目名→UUID マップ（新規生成 or 既存を使う）
+        if (!exerciseNameToId[keyName]) {
+          exerciseNameToId[keyName] = crypto.randomUUID();
         }
-        const exId = exerciseNameToId[exerciseName];
+        const exId = exerciseNameToId[keyName];
 
-        // 「YYYY-MM-DD」部分をキーにしてマップを作成
+        // 「YYYY-MM-DD」をキーにして Workout をまとめる
         const dateKey = new Date(dateStr).toISOString().slice(0, 10);
         if (!workoutMap[dateKey]) {
           workoutMap[dateKey] = {
@@ -142,7 +189,7 @@
           };
         }
 
-        // 1行 = 1セット とみなして、sets 配列に追加
+        // 1行＝1セットとみなして追加
         workoutMap[dateKey].sets.push({
           exerciseId: exId,
           weight: weight,
@@ -151,17 +198,15 @@
         });
       });
 
-      // exerciseNameToId → exercises 配列を作る
-      const exercises = Object.entries(exerciseNameToId).map(([name, id]) => {
-        return {
-          id: id,
-          name: name,
-          sortOrder: 0,
-          bodyPart: ""
-        };
-      });
+      // exercises 配列を構築
+      const exercises = Object.entries(exerciseNameToId).map(([name, id]) => ({
+        id: id,
+        name: name,
+        sortOrder: 0,
+        bodyPart: "" // 部位情報は不要または利用タイミングで付与
+      }));
 
-      // workoutMap → workouts 配列を作る
+      // workouts 配列をまとめる
       const workouts = Object.values(workoutMap);
 
       // bodyParts と personalRecords は空配列
@@ -175,13 +220,12 @@
         workouts: workouts
       };
 
-      // JSON を生成してダウンロード
       const blob = new Blob([JSON.stringify(finalObj, null, 2)], { type: "application/json" });
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
       link.download = "WorkoutLog_Export.json";
       link.click();
-    });
+    }
   </script>
 </body>
 </html>
