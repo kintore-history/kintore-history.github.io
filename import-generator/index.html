@@ -2,9 +2,10 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>筋トレログ JSON生成ツール</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link href="https://unpkg.com/gridjs/dist/theme/mermaid.min.css" rel="stylesheet" />
+  <script src="https://unpkg.com/gridjs/dist/gridjs.production.min.js"></script>
   <style>
     body {
       font-family: sans-serif;
@@ -35,48 +36,70 @@
       padding: 6px 10px;
       font-size: 0.95em;
     }
+    input.gridjs-input {
+      width: 100%;
+      box-sizing: border-box;
+    }
   </style>
 </head>
 <body>
   <h1>筋トレデータ入力（JSONインポート用）</h1>
-  <p>下の表にデータを入力し、「JSONを生成」ボタンを押してください。</p>
+  <p>（最新版 UMD形式）</p>
 
   <div id="grid"></div>
   <div class="button-container">
     <button onclick="exportJSON()">JSONを生成してダウンロード</button>
   </div>
 
-  <script type="module">
-    import { Grid } from "https://unpkg.com/gridjs?module";
-
+  <script>
     const columns = ["日付", "種目名", "重量(kg)", "回数", "セット数", "メモ"];
 
-    const grid = new Grid({
-      columns: columns.map(col => ({ name: col, editor: true })),
+    const grid = new gridjs.Grid({
+      columns: columns,
       data: [["", "", "", "", "", ""]],
       pagination: false,
       sort: false,
       search: false,
       resizable: true,
-    }).render(document.getElementById("grid"));
+      autoWidth: true
+    });
 
-    window.exportJSON = async () => {
-      const data = await grid.config.store.getData();
-      const records = data.map(row => ({
-        date: row[0],
-        name: row[1],
-        weight: parseFloat(row[2]) || 0,
-        reps: parseInt(row[3]) || 0,
-        sets: parseInt(row[4]) || 0,
-        note: row[5] || ""
-      }));
+    grid.render(document.getElementById("grid"));
+
+    // 編集可能にする (input要素への変換)
+    setTimeout(() => {
+      document.querySelectorAll('.gridjs-td').forEach(td => {
+        const input = document.createElement('input');
+        input.className = 'gridjs-input';
+        input.value = td.innerText;
+        td.innerText = '';
+        td.appendChild(input);
+      });
+    }, 100);
+
+    function exportJSON() {
+      const rows = Array.from(document.querySelectorAll('.gridjs-td'))
+        .map(td => td.querySelector('input')?.value || '');
+      const rowCount = rows.length / 6;
+
+      const records = [];
+      for (let i = 0; i < rowCount; i++) {
+        records.push({
+          date: rows[i*6],
+          name: rows[i*6 + 1],
+          weight: parseFloat(rows[i*6 + 2]) || 0,
+          reps: parseInt(rows[i*6 + 3]) || 0,
+          sets: parseInt(rows[i*6 + 4]) || 0,
+          note: rows[i*6 + 5] || ""
+        });
+      }
 
       const blob = new Blob([JSON.stringify({ records }, null, 2)], { type: "application/json" });
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
       link.download = "training-log.json";
       link.click();
-    };
+    }
   </script>
 </body>
 </html>
