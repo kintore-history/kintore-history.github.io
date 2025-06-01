@@ -2,71 +2,186 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>筋トレログ JSON生成ツール（JSpreadsheet版）</title>
+  <title>筋トレログ JSON生成ツール（行追加・削除対応版）</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- 1. jsuites のCSS -->
+  <!-- jsuites と jspreadsheet の CSS を読み込む -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsuites@4/dist/jsuites.min.css" />
-
-  <!-- 2. jspreadsheet-ce のCSS（存在するバージョンを指定） -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jspreadsheet-ce@4.10.2/dist/jspreadsheet.min.css" />
 </head>
 <body>
   <h1>筋トレデータ入力（JSpreadsheet版）</h1>
-  <p>カレンダー選択、セル・行のコピー＆ペーストが可能です。</p>
+  <p>「＋行追加」「−行削除」ボタンで明示的に行を追加・削除できます。</p>
 
   <div id="spreadsheet"></div>
 
   <div style="margin-top: 1em;">
-    <button onclick="exportJSON()">JSONを生成してダウンロード</button>
+    <!-- 行追加ボタン -->
+    <button id="addRowBtn" style="margin-right: 1em;">＋ 行追加</button>
+    <!-- 行削除ボタン -->
+    <button id="deleteRowBtn" style="margin-right: 1em;">− 行削除</button>
+    <!-- JSON生成ボタン -->
+    <button id="exportBtn">アプリ形式でJSONを生成＆ダウンロード</button>
   </div>
 
-  <!-- 3. jsuites のJS -->
+  <!-- jsuites と jspreadsheet の JS を読み込む -->
   <script src="https://cdn.jsdelivr.net/npm/jsuites@4/dist/jsuites.min.js"></script>
-
-  <!-- 4. jspreadsheet-ce のJS（存在するバージョンを指定） -->
   <script src="https://cdn.jsdelivr.net/npm/jspreadsheet-ce@4.10.2/dist/index.min.js"></script>
 
   <script>
-    // JSpreadsheet の初期化
+    // 1) JSpreadsheet を初期化
     const spreadsheet = jspreadsheet(document.getElementById('spreadsheet'), {
       data: [
-        ["2025-06-01", "ベンチプレス", 60, 8, 3, "初回"]
+        ["2025-06-01", "ベンチプレス", 60, 8, "", "初回"]
       ],
       columns: [
         { type: 'calendar', title: '日付', width: 120, options: { format: 'YYYY-MM-DD' } },
-        { type: 'text', title: '種目名', width: 150 },
-        { type: 'numeric', title: '重量(kg)', width: 100 },
-        { type: 'numeric', title: '回数', width: 80 },
-        { type: 'numeric', title: 'セット数', width: 80 },
-        { type: 'text', title: 'メモ', width: 180 },
+        { type: 'text',     title: '種目名', width: 150 },
+        { type: 'numeric',  title: '重量(kg)', width: 100 },
+        { type: 'numeric',  title: '回数',    width: 80 },
+        { type: 'text',     title: 'セット数(※未使用)', width: 0, visible: false },
+        { type: 'text',     title: 'メモ',    width: 180 },
       ],
       minDimensions: [6, 5],
       allowInsertColumn: false,
       allowManualInsertColumn: false,
-      allowManualInsertRow: true,
+      allowManualInsertRow: false,  // 手動追加はボタン経由のみとする
       allowDeleteRow: true,
       contextMenu: false
     });
 
-    // JSON出力＆ダウンロード関数
-    function exportJSON() {
-      const data = spreadsheet.getData();
-      const records = data.map(row => ({
-        date: row[0],
-        name: row[1],
-        weight: parseFloat(row[2]) || 0,
-        reps: parseInt(row[3]) || 0,
-        sets: parseInt(row[4]) || 0,
-        note: row[5] || ""
-      }));
+    // ──────────────────────────────────────────────────────
+    // 「＋ 行追加」ボタンの動作
+    // ──────────────────────────────────────────────────────
+    document.getElementById('addRowBtn').addEventListener('click', () => {
+      // 現在の行数を取得
+      const totalRows = spreadsheet.getData().length;
+      // 新規行としてすべて空欄の配列を作成（列数分）
+      const emptyRow = ["", "", "", "", "", ""];
+      // 最終行の下に空行を挿入
+      spreadsheet.insertRow(totalRows, emptyRow);
 
-      const blob = new Blob([JSON.stringify({ records }, null, 2)], { type: "application/json" });
+      // 挿入後に「日付」列（列番号0）に今日の日付を自動入力（ISO 形式の年月日部分のみ）
+      const todayStr = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+      spreadsheet.setValueFromCoords(0, totalRows, todayStr);
+
+      // 新しく追加した行を選択状態にしておく（視覚的にわかりやすく）
+      // setSelectedCell: 引数は (column_index, row_index, scroll_to_cell: boolean)
+      spreadsheet.setSelectedCell(0, totalRows, true);
+    });
+
+    // ──────────────────────────────────────────────────────
+    // 「− 行削除」ボタンの動作
+    // ──────────────────────────────────────────────────────
+    document.getElementById('deleteRowBtn').addEventListener('click', () => {
+      // 現在選択されているセルを取得
+      // getSelectedCell() は [columnIndex, rowIndex] の配列を返す
+      const selected = spreadsheet.getSelectedCell();
+      if (!selected) {
+        alert("まず、削除したい行のセルをクリックして選択してください。");
+        return;
+      }
+      const [, rowIndex] = selected; // 0番目が列、1番目が行
+      // 最低でも1行は残したい場合は以下のようにチェックする
+      const totalRows = spreadsheet.getData().length;
+      if (totalRows <= 1) {
+        alert("最終行は削除できません。");
+        return;
+      }
+      // 確認ダイアログ（任意）
+      const answer = confirm(`行 ${rowIndex + 1} を削除してよろしいですか？`);
+      if (answer) {
+        spreadsheet.deleteRow(rowIndex);
+      }
+    });
+
+    // ──────────────────────────────────────────────────────
+    // 「アプリ形式でJSONを生成＆ダウンロード」ボタン
+    // Swift の ImportDataView で受け取れる形式に整形してダウンロード
+    // （先ほどの exportJSON ロジックをそのまま使う）
+    // ──────────────────────────────────────────────────────
+    document.getElementById('exportBtn').addEventListener('click', () => {
+      // スプレッドシートの全データを取得
+      const data = spreadsheet.getData();
+      // 種目名→UUID のマップを作成
+      const exerciseNameToId = {};
+      // 日付ごとに Workout をまとめるマップ
+      const workoutMap = {};
+
+      // 日付文字列 ("YYYY-MM-DD") を ISO8601 ("YYYY-MM-DDT00:00:00Z") に変換する関数
+      function toISO8601(dateString) {
+        // dateString 例: "2025-06-01" → new Date(dateString) は UTC として扱われる
+        return new Date(dateString).toISOString();
+      }
+
+      data.forEach(row => {
+        const dateStr = row[0];            // 例: "2025-06-01"
+        const exerciseName = row[1] || "";
+        const weight = parseFloat(row[2]) || 0;
+        const reps = parseInt(row[3]) || 0;
+        // row[4]（セット数）は今回は使わない想定
+        const note = row[5] || "";
+
+        if (!exerciseName) {
+          return; // 種目名が空ならスキップ
+        }
+
+        // 種目名ごとに UUID をふる（未登録なら新規生成）
+        if (!exerciseNameToId[exerciseName]) {
+          exerciseNameToId[exerciseName] = crypto.randomUUID();
+        }
+        const exId = exerciseNameToId[exerciseName];
+
+        // 「YYYY-MM-DD」部分をキーにしてマップを作成
+        const dateKey = new Date(dateStr).toISOString().slice(0, 10);
+        if (!workoutMap[dateKey]) {
+          workoutMap[dateKey] = {
+            date: toISO8601(dateKey),
+            memo: "",
+            sets: []
+          };
+        }
+
+        // 1行 = 1セット とみなして、sets 配列に追加
+        workoutMap[dateKey].sets.push({
+          exerciseId: exId,
+          weight: weight,
+          reps: reps,
+          memo: note
+        });
+      });
+
+      // exerciseNameToId → exercises 配列を作る
+      const exercises = Object.entries(exerciseNameToId).map(([name, id]) => {
+        return {
+          id: id,
+          name: name,
+          sortOrder: 0,
+          bodyPart: ""
+        };
+      });
+
+      // workoutMap → workouts 配列を作る
+      const workouts = Object.values(workoutMap);
+
+      // bodyParts と personalRecords は空配列
+      const bodyParts = [];
+      const personalRecords = [];
+
+      const finalObj = {
+        bodyParts: bodyParts,
+        exercises: exercises,
+        personalRecords: personalRecords,
+        workouts: workouts
+      };
+
+      // JSON を生成してダウンロード
+      const blob = new Blob([JSON.stringify(finalObj, null, 2)], { type: "application/json" });
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
-      link.download = "training-log.json";
+      link.download = "WorkoutLog_Export.json";
       link.click();
-    }
+    });
   </script>
 </body>
 </html>
