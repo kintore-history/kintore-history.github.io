@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>部位連動＋自由入力ドロップダウン（既存種目リスト）</title>
+  <title>部位連動＋自由入力ドロップダウン（修正版）</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <!-- jsuites / jspreadsheet の CSS 読み込み -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsuites@4/dist/jsuites.min.css" />
@@ -88,7 +88,7 @@
     const spreadsheet = jspreadsheet(document.getElementById('spreadsheet'), {
       data: [
         // 初期行を空行にしておく（例: 部位と種目は空文字）
-        ["", "", 0, 0, ""]
+        ["", "", "", 0, 0, ""]
       ],
       columns: [
         {
@@ -114,10 +114,9 @@
           source: [],
           autocomplete: true,
           allowCustom: true,
-          filter: function(cell, col, row, source) {
-            // 同じ行の「部位」列（列インデックス1）の値を取得
-            const selectedPart = this.getValueFromCoords(1, row);
-            // 選択された部位に対応する種目リストを返す（なければ空配列）
+          filter: function (instance, col, row, value) {
+            // 第一引数 instance を使って、同じ行の「部位」列の値を取得
+            const selectedPart = instance.getValueFromCoords(1, row);
             return exercisesByPart[selectedPart] || [];
           }
         },
@@ -167,19 +166,14 @@
           return; // 日付が未入力ならスキップ
         }
 
-        // 種目名が空 or 部位と連動していない場合は自由入力を想定しつつ進める
-        let keyName = exerciseName.trim();
-        if (!keyName) {
-          return; // 種目名が空ならスキップ
-        }
+        const keyName = exerciseName.trim();
+        if (!keyName) return;
 
-        // 種目名→UUID マップ（新規生成 or 既存を使う）
         if (!exerciseNameToId[keyName]) {
           exerciseNameToId[keyName] = crypto.randomUUID();
         }
         const exId = exerciseNameToId[keyName];
 
-        // 「YYYY-MM-DD」をキーにして Workout をまとめる
         const dateKey = new Date(dateStr).toISOString().slice(0, 10);
         if (!workoutMap[dateKey]) {
           workoutMap[dateKey] = {
@@ -189,7 +183,6 @@
           };
         }
 
-        // 1行＝1セットとみなして追加
         workoutMap[dateKey].sets.push({
           exerciseId: exId,
           weight: weight,
@@ -198,18 +191,14 @@
         });
       });
 
-      // exercises 配列を構築
       const exercises = Object.entries(exerciseNameToId).map(([name, id]) => ({
         id: id,
         name: name,
         sortOrder: 0,
-        bodyPart: "" // 部位情報は不要または利用タイミングで付与
+        bodyPart: ""
       }));
 
-      // workouts 配列をまとめる
       const workouts = Object.values(workoutMap);
-
-      // bodyParts と personalRecords は空配列
       const bodyParts = [];
       const personalRecords = [];
 
