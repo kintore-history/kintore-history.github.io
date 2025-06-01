@@ -1,0 +1,21 @@
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>筋トレログ JSON生成ツール</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://unpkg.com/gridjs/dist/theme/mermaid.min.css" rel="stylesheet" />
+  <script src="https://unpkg.com/gridjs/dist/gridjs.umd.js"></script>
+</head>
+<body>
+  <h1>筋トレデータ入力（JSONインポート用）</h1>
+  <p>下の表にデータを入力し、「JSONを生成」ボタンを押してください。</p>
+
+  <div id="grid"></div>
+  <div class="button-container">
+    <button onclick="exportJSON()">JSONを生成してダウンロード</button>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
