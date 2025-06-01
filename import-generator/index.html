@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>部位連動＋自由入力ドロップダウン（修正版）</title>
+  <title>部位連動＋自由入力ドロップダウン（部位未選択時は全種目を表示）</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <!-- jsuites / jspreadsheet の CSS 読み込み -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsuites@4/dist/jsuites.min.css" />
@@ -10,6 +10,7 @@
 </head>
 <body>
   <h1>部位連動＋自由入力ドロップダウン</h1>
+  <p>部位を選んでいないときも「全種目一覧」が表示されます。</p>
   <div id="spreadsheet" style="margin-bottom: 1em;"></div>
   <button onclick="exportJSON()">アプリ形式でJSONを生成＆ダウンロード</button>
 
@@ -18,7 +19,9 @@
   <script src="https://cdn.jsdelivr.net/npm/jspreadsheet-ce@4.10.2/dist/index.min.js"></script>
 
   <script>
-    // 1) 「部位」と「種目」の既存リスト
+    // ───────────────
+    // 1) 部位と種目マスタ
+    // ───────────────
     const bodyPartOptions = ["胸", "背中", "肩", "腕", "腹", "脚"];
     const exercisesByPart = {
       "胸": [
@@ -84,10 +87,17 @@
       ]
     };
 
-    // 2) JSpreadsheet を初期化
+    // ───────────────
+    // 2) 全種目を一つの配列にまとめる（部位未選択時に使う）
+    // ───────────────
+    const allExercises = Object.values(exercisesByPart).flat();
+
+    // ───────────────
+    // 3) JSpreadsheet を初期化
+    // ───────────────
     const spreadsheet = jspreadsheet(document.getElementById('spreadsheet'), {
       data: [
-        // 初期行を空行にしておく
+        // 初期行：日付、部位、種目、重量、回数、メモ の６列
         ["", "", "", 0, 0, ""]
       ],
       columns: [
@@ -107,18 +117,22 @@
           allowCustom: false
         },
         {
-          // 「種目名」列：部位に連動かつ自由入力を許可
+          // 「種目名」列：部位と連動、かつ自由入力を許可
           type: 'dropdown',
           title: '種目名',
           width: 180,
-          source: [],
-          autocomplete: true,
-          allowCustom: true,
+          source: [],          // 初期は空。filter で動的にセットする
+          autocomplete: true,  // キーボード入力で候補を絞り込み
+          allowCustom: true,   // リストにない文字列でも入力可能
           filter: function(cell, col, row, value) {
-            // グローバルな spreadsheet インスタンスを使って
             // 同じ行の「部位」列（列インデックス1）の値を取得
             const selectedPart = spreadsheet.getValueFromCoords(1, row);
-            return exercisesByPart[selectedPart] || [];
+            // 部位が選択されている場合は、その部位に対応する種目を返す
+            if (selectedPart && exercisesByPart[selectedPart]) {
+              return exercisesByPart[selectedPart];
+            }
+            // 部位が未選択またはマップに存在しない場合は「全種目一覧」を返す
+            return allExercises;
           }
         },
         {
@@ -145,7 +159,10 @@
       contextMenu: false
     });
 
-    // 3) JSON生成＆ダウンロード関数（例：アプリ側インポート形式に合わせる）
+    // ─────────────────────────────
+    // 4) JSON生成＆ダウンロード関数
+    //    （アプリのインポート形式に合わせる例）
+    // ─────────────────────────────
     function exportJSON() {
       const data = spreadsheet.getData();
       const exerciseNameToId = {};
@@ -163,10 +180,10 @@
         const reps = parseInt(row[4]) || 0;
         const note = row[5] || "";
 
+        // 日付が空の場合はスキップ
         if (!dateStr) {
-          return; // 日付が未入力ならスキップ
+          return;
         }
-
         const keyName = exerciseName.trim();
         if (!keyName) return;
 
