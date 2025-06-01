@@ -2,11 +2,11 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>部位連動＋自由入力ドロップダウン（v4 修正版）</title>
+  <title>部位連動＋自由入力ドロップダウン（JSpreadsheet v3）</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!-- jsuites / jspreadsheet CE v4 の CSS -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsuites@4/dist/jsuites.min.css" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jspreadsheet-ce@4.10.2/dist/jspreadsheet.min.css" />
+  <!-- jsuites（v3）とJSpreadsheet v3 のCSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsuites@3/dist/jsuites.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jspreadsheet@3.21.0/dist/jexcel.css" />
   <style>
     body { font-family: sans-serif; padding: 1em; }
     #spreadsheet { margin-bottom: 1em; }
@@ -14,15 +14,15 @@
   </style>
 </head>
 <body>
-  <h1>部位連動＋自由入力ドロップダウン（v4 修正版）</h1>
-  <p>「種目名」セルはシングルクリックでプルダウンが開き、リスト外の文字も入力できます。</p>
+  <h1>部位連動＋自由入力ドロップダウン（v3 安定版）</h1>
+  <p>「種目名」セルは部位に応じて絞り込まれ、リストにない文字も入力できます。</p>
 
   <div id="spreadsheet"></div>
   <button onclick="exportJSON()">アプリ形式でJSON生成＆ダウンロード</button>
 
-  <!-- jsuites / jspreadsheet CE v4 の JS -->
-  <script src="https://cdn.jsdelivr.net/npm/jsuites@4/dist/jsuites.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspreadsheet-ce@4.10.2/dist/index.min.js"></script>
+  <!-- jsuites（v3）とJSpreadsheet v3 のJS -->
+  <script src="https://cdn.jsdelivr.net/npm/jsuites@3/dist/jsuites.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspreadsheet@3.21.0/dist/jexcel.js"></script>
 
   <script>
     // ───────────────
@@ -92,18 +92,19 @@
         "カーフレイズ"
       ]
     };
-    // 部位未選択時にすべての種目を候補に含むため、フラット化しておく
+    // 部位未選択時に全種目を候補にするため、フラット化
     const allExercises = Object.values(exercisesByPart).flat();
 
     // ───────────────
-    // 2) JSpreadsheet v4 を初期化
-    //    ・editOnClick: true でシングルクリックでセル編集／プルダウンを開く
-    //    ・type:'dropdown' + options(...) で動的な候補を返す
+    // 2) JSpreadsheet v3 を初期化
+    //    ・editOnClick: true でシングルクリックでセル編集開始
+    //    ・列2 (種目名) は source: allExercises で初期候補を設定
+    //    ・onchange で部位変更時に該当行の「種目名」source を書き換える
     // ───────────────
     const spreadsheet = jspreadsheet(document.getElementById('spreadsheet'), {
       editOnClick: true,
       data: [
-        // 6列分の空行 (日付, 部位, 種目, 重量, 回数, メモ)
+        // 初期行：日付, 部位, 種目, 重量, 回数, メモ
         ["", "", "", 0, 0, ""]
       ],
       columns: [
@@ -114,7 +115,6 @@
           options: { format: 'YYYY-MM-DD' }
         },
         {
-          // 「部位」列：固定プルダウン
           type: 'dropdown',
           title: '部位',
           width: 100,
@@ -123,23 +123,12 @@
           allowCustom: false
         },
         {
-          // ─── 「種目名」列 ───
-          // type:'dropdown' + options(...) で動的に配列を返す
           type: 'dropdown',
           title: '種目名',
           width: 200,
-          source: [],            // 初期は空、options() の返り値で上書き
-          autocomplete: true,    // タイプ入力で候補を絞り込む
-          allowCustom: true,     // リストにない文字でも入力できる
-          options: function(cell, row, col, value) {
-            // 同じ行の「部位」セルの値（列インデックス 1）を取得
-            const selectedPart = spreadsheet.getValueFromCoords(1, row);
-            // 部位が設定されていればその部位の種目、未設定なら全種目一覧を返す
-            if (selectedPart && exercisesByPart[selectedPart]) {
-              return exercisesByPart[selectedPart];
-            }
-            return allExercises;
-          }
+          source: allExercises.slice(), // 初期は全種目
+          autocomplete: true,
+          allowCustom: true
         },
         {
           type: 'numeric',
@@ -162,12 +151,27 @@
       allowManualInsertColumn: false,
       allowManualInsertRow: true,
       allowDeleteRow: true,
-      contextMenu: false
+      contextMenu: false,
+      onchange: function(instance, cell, x, y, value) {
+        // x=列インデックス、y=行インデックス、value=入力値
+        // 「部位」列が変更されたら、同じ行の「種目名」の候補を更新
+        if (x === 1) {
+          const selectedPart = value;
+          const rowIndex = y;
+          const targetCol = 2; // 種目名の列インデックス
+
+          // 対応する種目リスト or 全種目をセット
+          const newSource = exercisesByPart[selectedPart] || allExercises;
+          instance.setSourceValue(rowIndex, targetCol, newSource);
+          // 種目セルを空クリア（前の候補が残っている可能性があるため）
+          instance.setValueFromCoords(targetCol, rowIndex, "");
+        }
+      }
     });
 
     // ─────────────────────────────
     // 3) JSON生成＆ダウンロード関数
-    //    （アプリのインポート形式に合わせる例）
+    //    （アプリ側インポート形式に合わせる例）
     // ─────────────────────────────
     function exportJSON() {
       const data = spreadsheet.getData();
@@ -186,7 +190,6 @@
         const reps = parseInt(row[4]) || 0;
         const note = row[5] || "";
 
-        // 日付が空ならスキップ
         if (!dateStr) return;
         const keyName = exerciseName.trim();
         if (!keyName) return;
@@ -197,7 +200,7 @@
         }
         const exId = exerciseNameToId[keyName];
 
-        // 日付（YYYY-MM-DD）をキーにまとめる
+        // 日付ごとに Workout をまとめる
         const dateKey = new Date(dateStr).toISOString().slice(0, 10);
         if (!workoutMap[dateKey]) {
           workoutMap[dateKey] = {
