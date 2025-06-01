@@ -2,13 +2,12 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>部位連動＋自由入力ドロップダウン（クリックで開く）</title>
+  <title>部位連動＋自由入力ドロップダウン（修正版）</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <!-- jsuites / jspreadsheet の CSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsuites@4/dist/jsuites.min.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jspreadsheet-ce@4.10.2/dist/jspreadsheet.min.css" />
   <style>
-    /* ちょっとだけ見た目を整える例 */
     body { font-family: sans-serif; padding: 1em; }
     #spreadsheet { margin-bottom: 1em; }
     button { padding: 0.5em 1em; font-size: 1rem; }
@@ -16,7 +15,7 @@
 </head>
 <body>
   <h1>部位連動＋自由入力ドロップダウン</h1>
-  <p>「種目名」セルはシングルクリックでプルダウンが開き、リスト外の文字も入力できます。</p>
+  <p>「種目名」セルはシングルクリックでプルダウンを開き、リスト外の文字も入力できます。</p>
   <div id="spreadsheet"></div>
   <button onclick="exportJSON()">アプリ形式でJSONを生成＆ダウンロード</button>
 
@@ -25,9 +24,7 @@
   <script src="https://cdn.jsdelivr.net/npm/jspreadsheet-ce@4.10.2/dist/index.min.js"></script>
 
   <script>
-    // ───────────────
-    // 1) 部位と種目マスタ（既存の選択肢）
-    // ───────────────
+    // 1) 部位と種目マスタ
     const bodyPartOptions = ["胸", "背中", "肩", "腕", "腹", "脚"];
     const exercisesByPart = {
       "胸": [
@@ -92,20 +89,12 @@
         "カーフレイズ"
       ]
     };
-
-    // ───────────────
-    //  全種目をまとめた配列（部位未選択時に表示する）
-    // ───────────────
     const allExercises = Object.values(exercisesByPart).flat();
 
-    // ───────────────
     // 2) JSpreadsheet を初期化
-    //    → editOnClick: true でシングルクリック時にセル編集／プルダウンを開く
-    // ───────────────
     const spreadsheet = jspreadsheet(document.getElementById('spreadsheet'), {
-      editOnClick: true,     // ← ここを true にするとダブルクリック不要でプルダウンを開ける
+      editOnClick: true, // シングルクリックでセル編集・プルダウンを開く
       data: [
-        // 初期行：日付、部位、種目、重量、回数、メモ の６列を一行だけ用意
         ["", "", "", 0, 0, ""]
       ],
       columns: [
@@ -122,23 +111,21 @@
           width: 100,
           source: bodyPartOptions,
           autocomplete: true,
-          allowCustom: false   // 「部位」はリスト内のみ
+          allowCustom: false
         },
         {
-          // 「種目名」列：部位連動＋自由入力
-          type: 'dropdown',
+          // 「種目名」列：editor:'dropdown' + options() で動的に絞り込み
           title: '種目名',
           width: 200,
-          source: [],           // 空にしておき、filter で動的に上書きする
-          autocomplete: true,   // キーボード入力で候補を絞り込める
-          allowCustom: true,    // リストにない文字列を書いても OK
-          filter: function(cell, col, row, value) {
-            // 「部位」列（列インデックス1）の値を取得
+          editor: 'dropdown',
+          autocomplete: true,
+          allowCustom: true,
+          options: function(cell, row, col) {
+            // 同じ行の「部位」列の値
             const selectedPart = spreadsheet.getValueFromCoords(1, row);
             if (selectedPart && exercisesByPart[selectedPart]) {
               return exercisesByPart[selectedPart];
             }
-            // 部位が未選択、またはマップにない場合は全種目を返す
             return allExercises;
           }
         },
@@ -166,10 +153,7 @@
       contextMenu: false
     });
 
-    // ─────────────────────────────
     // 3) JSON生成＆ダウンロード関数
-    //    （アプリインポート形式に合わせる例）
-    // ─────────────────────────────
     function exportJSON() {
       const data = spreadsheet.getData();
       const exerciseNameToId = {};
@@ -187,19 +171,16 @@
         const reps = parseInt(row[4]) || 0;
         const note = row[5] || "";
 
-        // 日付が空ならスキップ
         if (!dateStr) return;
 
         const keyName = exerciseName.trim();
         if (!keyName) return;
 
-        // 種目 → UUID マップ作成
         if (!exerciseNameToId[keyName]) {
           exerciseNameToId[keyName] = crypto.randomUUID();
         }
         const exId = exerciseNameToId[keyName];
 
-        // 日付ごとに Workout をまとめる
         const dateKey = new Date(dateStr).toISOString().slice(0, 10);
         if (!workoutMap[dateKey]) {
           workoutMap[dateKey] = {
@@ -223,7 +204,6 @@
         sortOrder: 0,
         bodyPart: ""
       }));
-
       const workouts = Object.values(workoutMap);
       const bodyParts = [];
       const personalRecords = [];
@@ -234,7 +214,6 @@
         personalRecords: personalRecords,
         workouts: workouts
       };
-
       const blob = new Blob([JSON.stringify(finalObj, null, 2)], { type: "application/json" });
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
