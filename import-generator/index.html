@@ -127,6 +127,10 @@
 
   <h1>ワークアウト入力テーブル（自作＋複数選択コピー対応）</h1>
   <p>部位を選ぶと種目が絞り込まれます。種目リストにない文字列も入力できます。</p>
+  <p style="color: #666; font-size: 0.9em; margin-bottom: 1em;">
+    ※ このデータはブラウザのローカルストレージにのみ保存され、サーバーに送信されることはありません。
+    ブラウザのキャッシュをクリアすると保存データは削除されます。
+  </p>
 
   <table id="workout-table" role="grid" aria-label="ワークアウト記録">
     <thead>
@@ -189,6 +193,57 @@
 
       // 行ごとにユニークな ID 接尾辞として使うカウンタ
       let rowCount = 0;
+
+      // データの保存と読み込みの関数
+      function saveToLocalStorage() {
+        const rows = Array.from(tbody.querySelectorAll("tr")).map(tr => {
+          const inputs = tr.querySelectorAll("input, select");
+          return {
+            date: inputs[0].value,
+            bodyPart: inputs[1].value,
+            exercise: inputs[2].value,
+            weight: inputs[3].value,
+            reps: inputs[4].value,
+            note: inputs[5].value
+          };
+        });
+        localStorage.setItem("workoutData", JSON.stringify(rows));
+      }
+
+      function loadFromLocalStorage() {
+        const savedData = localStorage.getItem("workoutData");
+        if (savedData) {
+          const rows = JSON.parse(savedData);
+          rows.forEach(row => {
+            addRow();
+            const tr = tbody.lastElementChild;
+            const inputs = tr.querySelectorAll("input, select");
+            inputs[0].value = row.date;
+            inputs[1].value = row.bodyPart;
+            inputs[2].value = row.exercise;
+            inputs[3].value = row.weight;
+            inputs[4].value = row.reps;
+            inputs[5].value = row.note;
+            // 部位が設定されている場合、種目候補を更新
+            if (row.bodyPart) {
+              inputs[1].dispatchEvent(new Event("change"));
+            }
+          });
+        }
+      }
+
+      // 入力値が変更されたときに保存
+      function setupAutoSave() {
+        tbody.addEventListener("change", (e) => {
+          if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") {
+            saveToLocalStorage();
+          }
+        });
+      }
+
+      // 初期データの読み込み
+      loadFromLocalStorage();
+      setupAutoSave();
 
       // ─────────────────────────────
       // ■ ここから追加：複数選択用の変数定義
@@ -620,7 +675,62 @@
       // ────────────────────────────────────────────────────
       // 4) JSON 生成＆ダウンロード処理 (既存のまま)
       // ────────────────────────────────────────────────────
+      // エクスポート時のバリデーション
+      function validateExport() {
+        const rows = document.querySelectorAll("#workout-table tbody tr");
+        let isValid = true;
+        let errorMessages = [];
+
+        rows.forEach((tr, index) => {
+          const inputs = tr.querySelectorAll("input, select");
+          const date = inputs[0].value.trim();
+          const bodyPart = inputs[1].value.trim();
+          const exercise = inputs[2].value.trim();
+          const weight = inputs[3].value.trim();
+          const reps = inputs[4].value.trim();
+
+          if (!date || !bodyPart || !exercise || !weight || !reps) {
+            isValid = false;
+            errorMessages.push(`${index + 1}行目: 必須項目が入力されていません`);
+          }
+        });
+
+        if (!isValid) {
+          alert("エクスポートできません:\n" + errorMessages.join("\n"));
+        }
+
+        return isValid;
+      }
+
+      // データのクリア機能
+      function clearData() {
+        if (confirm("入力データを全てクリアしますか？\nこの操作は取り消せません。")) {
+          // テーブルの行を全て削除
+          while (tbody.firstChild) {
+            tbody.removeChild(tbody.firstChild);
+          }
+          // localStorageのデータを削除
+          localStorage.removeItem("workoutData");
+          // 初期行を追加
+          addRow();
+        }
+      }
+
+      // クリアボタンの追加
+      const clearBtn = document.createElement("button");
+      clearBtn.textContent = "データをクリア";
+      clearBtn.className = "btn";
+      clearBtn.style.background = "#e67e22";
+      clearBtn.style.color = "white";
+      clearBtn.addEventListener("click", clearData);
+      document.body.insertBefore(clearBtn, exportJsonBtn);
+
+      // エクスポートボタンのイベントハンドラを修正
       exportJsonBtn.addEventListener("click", () => {
+        if (!validateExport()) {
+          return;
+        }
+
         const rows = document.querySelectorAll("#workout-table tbody tr");
         const exerciseNameToId = {};
         const workoutMap = {};
@@ -705,6 +815,89 @@
         link.download = `kintoreHistory_${timestamp}.json`;
         link.click();
       });
+
+      // バリデーション関数
+      function validateInput(input, type) {
+        const value = input.value.trim();
+        let isValid = true;
+        let errorMessage = "";
+
+        switch (type) {
+          case "date":
+            if (!value) {
+              isValid = false;
+              errorMessage = "日付を入力してください";
+            }
+            break;
+          case "body":
+            if (!value) {
+              isValid = false;
+              errorMessage = "部位を選択してください";
+            }
+            break;
+          case "exercise":
+            if (!value) {
+              isValid = false;
+              errorMessage = "種目名を入力してください";
+            }
+            break;
+          case "weight":
+            if (!value) {
+              isValid = false;
+              errorMessage = "重量を入力してください";
+            } else if (isNaN(value) || parseFloat(value) < 0) {
+              isValid = false;
+              errorMessage = "0以上の数値を入力してください";
+            }
+            break;
+          case "reps":
+            if (!value) {
+              isValid = false;
+              errorMessage = "回数を入力してください";
+            } else if (isNaN(value) || parseInt(value) < 0 || !Number.isInteger(parseFloat(value))) {
+              isValid = false;
+              errorMessage = "0以上の整数を入力してください";
+            }
+            break;
+        }
+
+        // エラーメッセージの表示/非表示
+        const errorElement = input.parentElement.querySelector(".error-message");
+        if (!isValid) {
+          if (!errorElement) {
+            const error = document.createElement("div");
+            error.className = "error-message";
+            error.style.color = "#e74c3c";
+            error.style.fontSize = "0.8em";
+            error.style.marginTop = "0.2em";
+            error.textContent = errorMessage;
+            input.parentElement.appendChild(error);
+          } else {
+            errorElement.textContent = errorMessage;
+          }
+          input.style.borderColor = "#e74c3c";
+        } else {
+          if (errorElement) {
+            errorElement.remove();
+          }
+          input.style.borderColor = "#ccc";
+        }
+
+        return isValid;
+      }
+
+      // 入力フィールドのバリデーション設定
+      function setupValidation() {
+        tbody.addEventListener("input", (e) => {
+          if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") {
+            const type = e.target.name.split("-")[0];
+            validateInput(e.target, type);
+          }
+        });
+      }
+
+      // バリデーションの初期設定
+      setupValidation();
     });
   </script>
 </body>
