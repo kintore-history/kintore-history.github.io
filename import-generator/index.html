@@ -8,12 +8,15 @@
     body {
       font-family: sans-serif;
       padding: 1em;
+      max-width: 1200px;
+      margin: 0 auto;
     }
     table {
       width: 100%;
       border-collapse: collapse;
       margin-bottom: 1em;
-      user-select: none; /* ドラッグ選択の際に意図しないテキスト選択を防ぐ */
+      user-select: none;
+      font-size: 0.9rem;
     }
     th, td {
       border: 1px solid #ccc;
@@ -22,13 +25,27 @@
     }
     th {
       background: #f5f5f5;
+      position: sticky;
+      top: 0;
+      z-index: 1;
     }
     input, select, button {
-      font-size: 1rem;
+      font-size: 0.9rem;
+      padding: 0.3em;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #3498db;
+      box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
     }
     .btn {
       padding: 0.5em 1em;
       margin-right: 0.5em;
+      border-radius: 4px;
+      font-weight: bold;
+      transition: background-color 0.2s;
     }
     .delete-row {
       background: #e74c3c;
@@ -36,17 +53,50 @@
       border: none;
       cursor: pointer;
     }
+    .delete-row:hover {
+      background: #c0392b;
+    }
     .add-row {
       background: #3498db;
       color: white;
       border: none;
       cursor: pointer;
     }
+    .add-row:hover {
+      background: #2980b9;
+    }
     .export-json {
       background: #2ecc71;
       color: white;
       border: none;
       cursor: pointer;
+    }
+    .export-json:hover {
+      background: #27ae60;
+    }
+    .copy-row {
+      background: #f39c12;
+      color: white;
+      border: none;
+      cursor: pointer;
+      margin-left: 0.5em;
+    }
+    .copy-row:hover {
+      background: #d35400;
+    }
+    .stepper {
+      display: flex;
+      align-items: center;
+      gap: 0.2em;
+    }
+    .stepper button {
+      padding: 0.2em 0.5em;
+      background: #f5f5f5;
+      border: 1px solid #ccc;
+      cursor: pointer;
+    }
+    .stepper button:hover {
+      background: #e0e0e0;
     }
     /* datalist はデフォルトで非表示 */
     datalist {
@@ -57,6 +107,20 @@
     .selected-cell {
       background-color: rgba(52, 152, 219, 0.3);
     }
+    @media (max-width: 768px) {
+      body {
+        padding: 0.5em;
+      }
+      table {
+        font-size: 0.8rem;
+      }
+      input, select, button {
+        font-size: 0.8rem;
+      }
+      .btn {
+        padding: 0.4em 0.8em;
+      }
+    }
   </style>
 </head>
 <body>
@@ -64,16 +128,16 @@
   <h1>ワークアウト入力テーブル（自作＋複数選択コピー対応）</h1>
   <p>部位を選ぶと種目が絞り込まれます。種目リストにない文字列も入力できます。</p>
 
-  <table id="workout-table">
+  <table id="workout-table" role="grid" aria-label="ワークアウト記録">
     <thead>
       <tr>
-        <th>日付</th>
-        <th>部位</th>
-        <th>種目名</th>
-        <th>重量(kg)</th>
-        <th>回数</th>
-        <th>メモ</th>
-        <th>削除</th>
+        <th scope="col">日付</th>
+        <th scope="col">部位</th>
+        <th scope="col">種目名</th>
+        <th scope="col">重量(kg)</th>
+        <th scope="col">回数</th>
+        <th scope="col">メモ</th>
+        <th scope="col">操作</th>
       </tr>
     </thead>
     <tbody>
@@ -81,8 +145,8 @@
     </tbody>
   </table>
 
-  <button id="add-row-btn" class="btn add-row">＋行追加</button>
-  <button id="export-json-btn" class="btn export-json">JSONを生成してダウンロード</button>
+  <button id="add-row-btn" class="btn add-row" aria-label="新しい行を追加">＋行追加</button>
+  <button id="export-json-btn" class="btn export-json" aria-label="JSONファイルをダウンロード">JSONを生成してダウンロード</button>
 
   <script>
     // ─────────────────────────────
@@ -610,7 +674,6 @@
         });
 
         const exercises = Object.entries(exerciseNameToId).map(([name, id]) => ({
-          id: id,
           name: name,
           sortOrder: 0,
           bodyPart: ""
@@ -620,6 +683,7 @@
         const personalRecords = [];
 
         const finalObj = {
+          version: "1.0.0",
           bodyParts: bodyParts,
           exercises: exercises,
           personalRecords: personalRecords,
@@ -631,7 +695,14 @@
         });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
-        link.download = "WorkoutLog_Export.json";
+        const now = new Date();
+        const timestamp = now.getFullYear() +
+          ('0' + (now.getMonth() + 1)).slice(-2) +
+          ('0' + now.getDate()).slice(-2) + '_' +
+          ('0' + now.getHours()).slice(-2) +
+          ('0' + now.getMinutes()).slice(-2) +
+          ('0' + now.getSeconds()).slice(-2);
+        link.download = `kintoreHistory_${timestamp}.json`;
         link.click();
       });
     });
