@@ -785,6 +785,7 @@
         });
 
         const exercises = Object.entries(exerciseNameToId).map(([name, id]) => ({
+          id: id,
           name: name,
           sortOrder: 0,
           bodyPart: ""
