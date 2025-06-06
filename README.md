@@ -1,8 +1,6 @@
-# 筋トレヒストリー アプリサポートページ（エクスポート/インポート機能)
-
+# 筋トレヒストリー アプリサポートページ（エクスポート/インポート機能）
 
 ## 目次
-
 
 - [このページについて](#このページについて)
 - [エクスポート機能](#エクスポート機能)
@@ -36,22 +34,28 @@
 
 以下のプロンプトをコピーして、ChatGPTに貼り付けてください。その後、エクスポートしたJSONデータをアップロードすることで、専門的なアドバイスを得ることができます。
 
-<button onclick="copyPrompt()" class="copy-button">
-  <svg class="copy-icon" viewBox="0 0 24 24" width="16" height="16">
-    <path d="M16 1H4C2.9 1 2 1.9 2 3v14h2V3h12V1zm3 4H8C6.9 5 6 5.9 6 7v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
-  </svg>
-  プロンプトをコピー
-</button>
+<div class="copy-container">
+  <button onclick="copyPrompt()" class="copy-button">
+    <svg class="copy-icon" viewBox="0 0 24 24" width="16" height="16">
+      <path d="M16 1H4C2.9 1 2 1.9 2 3v14h2V3h12V1zm3 4H8C6.9 5 6 5.9 6 7v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+    </svg>
+    プロンプトをコピー
+  </button>
+</div>
 
 ```text
 筋トレトレーナーの専門家として、アップロード済みのトレーニングデータを評価し、アドバイスしてください。  
 条件：単位はkg、性別は⚪︎、年齢XX 歳、体重YY kg、身長ZZZ cm
 ```
 
-> **注意事項**
-> - プロンプト内の「⚪︎」「XX」「YY」「ZZZ」は、それぞれあなたの性別、年齢、体重、身長に置き換えてください
+<div class="note-box">
+  <strong>注意事項</strong>
+  <ul>
+    <li>プロンプト内の「⚪︎」「XX」「YY」「ZZZ」は、それぞれあなたの性別、年齢、体重、身長に置き換えてください</li>
+  </ul>
+</div>
 
-### インポート機能
+## インポート機能
 
 筋トレヒストリーアプリでは、過去のトレーニングデータをインポートすることができます。
 この機能により、以下のようなデータを簡単に取り込むことができます：
@@ -70,8 +74,12 @@
 - 回数
 - セット数
 
-> **注意事項**
-> - インポートするデータは、アプリの仕様に準拠した形式である必要があります
+<div class="note-box">
+  <strong>注意事項</strong>
+  <ul>
+    <li>インポートするデータは、アプリの仕様に準拠した形式である必要があります</li>
+  </ul>
+</div>
 
 <script>
 function copyPrompt() {
@@ -91,6 +99,10 @@ function copyPrompt() {
 </script>
 
 <style>
+.copy-container {
+    margin: 1rem 0;
+}
+
 .copy-button {
     display: inline-flex;
     align-items: center;
@@ -128,5 +140,46 @@ function copyPrompt() {
 
 .check-icon {
     fill: currentColor;
+}
+
+.note-box {
+    background-color: #f8fafc;
+    border-left: 4px solid #4299e1;
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 0 4px 4px 0;
+}
+
+.note-box strong {
+    color: #2b6cb0;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.note-box ul {
+    margin: 0;
+    padding-left: 1.5rem;
+}
+
+.note-box li {
+    margin: 0.25rem 0;
+}
+
+h2 {
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 0.5rem;
+    margin-top: 2rem;
+}
+
+h3 {
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 0.25rem;
+    margin-top: 1.5rem;
+}
+
+h4 {
+    border-bottom: 1px dashed #e2e8f0;
+    padding-bottom: 0.25rem;
+    margin-top: 1.25rem;
 }
 </style>
