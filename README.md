@@ -1,4 +1,6 @@
-# 筋トレヒストリー アプリサポートページ（エクスポート/インポート機能）
+<div class="page-title">
+  <h1>筋トレヒストリー アプリサポートページ（エクスポート/インポート機能）</h1>
+</div>
 
 ## 目次
 
@@ -99,6 +101,19 @@ function copyPrompt() {
 </script>
 
 <style>
+.page-title {
+    margin-bottom: 2rem;
+}
+
+.page-title h1 {
+    font-size: 2rem;
+    font-weight: 600;
+    color: #2d3748;
+    margin: 0;
+    padding: 0;
+    border: none;
+}
+
 .copy-container {
     margin: 1rem 0;
 }
