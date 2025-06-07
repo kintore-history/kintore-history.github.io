@@ -14,6 +14,12 @@
 
 筋トレヒストリーは、あなたのトレーニング記録を簡単に管理できるiOSアプリです。このページでは、アプリのエクスポート/インポート機能の使い方と、エクスポートしたデータの活用方法について説明します。
 
+<div class="app-store-link">
+  <a href="https://getapp.cc/app/6745604705" target="_blank" rel="noopener">
+    <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" width="120">
+  </a>
+</div>
+
 ## エクスポート機能
 
 アプリで記録したトレーニングデータを外部で活用するために、JSON形式でエクスポートすることができます。
@@ -67,7 +73,7 @@
 
 インポート用のJSONデータを生成するには、以下のツールをご利用ください：
 
-[import-generator](https://kintore-history.github.io/import-generator/)
+[筋トレヒストリー - インポート用データ生成ツール](https://kintore-history.github.io/import-generator/)
 
 このツールを使用することで、以下のような形式のデータを簡単に作成できます：
 - 日付
@@ -112,6 +118,18 @@ function copyPrompt() {
     margin: 0;
     padding: 0;
     border: none;
+}
+
+.app-store-link {
+    margin: 1.5rem 0;
+}
+
+.app-store-link img {
+    transition: opacity 0.2s ease;
+}
+
+.app-store-link img:hover {
+    opacity: 0.8;
 }
 
 .copy-container {
