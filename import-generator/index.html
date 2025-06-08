@@ -126,6 +126,9 @@
 <body>
 
   <h1>筋トレヒストリー - インポート用データ生成ツール</h1>
+  <p id="tool-version" style="font-size:0.9em; color:#666; margin-bottom:1em;">
+    インポートデータ作成ツール バージョン: <span id="tool-version-value"></span>
+  </p>
   <p>iOSアプリ「筋トレヒストリー」用のワークアウトデータを入力し、インポート用JSONファイルを生成します。</p>
   <p>部位を選ぶと種目が絞り込まれます。種目リストにない文字列も入力できます。</p>
   <p style="color: #666; font-size: 0.9em; margin-bottom: 1em;">
@@ -188,6 +191,9 @@
     // 2) DOM 要素を取得
     // ─────────────────────────────
     document.addEventListener("DOMContentLoaded", () => {
+      // インポートデータ作成ツールのバージョン表示
+      const IMPORT_GENERATOR_VERSION = '1.0.0';
+      document.getElementById('tool-version-value').textContent = IMPORT_GENERATOR_VERSION;
       const tbody = document.querySelector("#workout-table tbody");
       const addRowBtn = document.getElementById("add-row-btn");
       const exportJsonBtn = document.getElementById("export-json-btn");
@@ -468,7 +474,6 @@
         btnDelete.addEventListener("click", () => {
           tr.remove();
         });
-        tdDelete.appendChild(btnDelete);
         // コピーボタン追加
         const btnCopy = document.createElement("button");
         btnCopy.textContent = "コピー";
@@ -491,6 +496,7 @@
           });
         });
         tdDelete.appendChild(btnCopy);
+        tdDelete.appendChild(btnDelete);
 
         tr.appendChild(tdDate);
         tr.appendChild(tdBodyPart);
@@ -796,7 +802,8 @@
         const personalRecords = [];
 
         const finalObj = {
-          version: "1.0.0",
+          //version: "1.0.0",
+          importGeneratorVersion: IMPORT_GENERATOR_VERSION,
           bodyParts: bodyParts,
           exercises: exercises,
           personalRecords: personalRecords,
