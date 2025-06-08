@@ -226,9 +226,10 @@
             inputs[4].value = row.reps;
             inputs[5].value = row.note;
             // 部位が設定されている場合、種目候補を更新
-            /*if (row.bodyPart) {
+            if (row.bodyPart) {
               inputs[1].dispatchEvent(new Event("change"));
-            }*/
+            }
+            inputs[2].value = row.exercise;
           });
         }
       }
